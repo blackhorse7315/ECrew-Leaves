@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transwisata Leave System</title>
+    
+    <!-- App Icons -->
+    <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/14XvFbNETCuybdeUeH6BPrPaC33uBijMc">
+    <link rel="apple-touch-icon" href="https://lh3.googleusercontent.com/d/14XvFbNETCuybdeUeH6BPrPaC33uBijMc">
+    
+    <!-- PWA Manifest Data URI -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"Transwisata Leave System","short_name":"TWA Leave","start_url":".","display":"standalone","background_color":"#f8fafc","theme_color":"#1e3a8a","icons":[{"src":"https://lh3.googleusercontent.com/d/14XvFbNETCuybdeUeH6BPrPaC33uBijMc","sizes":"512x512","type":"image/png"}]}'>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .aviation-gradient {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        .modal-overlay {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+        }
+
+        @media print {
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                padding: 40px;
+                background: white;
+            }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- HALAMAN LOGIN -->
+    <div id="login-page" class="fixed inset-0 z-[100] aviation-gradient flex items-center justify-center p-4">
+        <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden animate-fade-in">
+            <div class="p-10">
+                <div class="flex items-center gap-4 mb-8 justify-center">
+                    <!-- LOGO LOGIN -->
+                    <div class="h-16 w-auto">
+                        <img src="https://lh3.googleusercontent.com/d/14XvFbNETCuybdeUeH6BPrPaC33uBijMc" alt="Logo" class="h-full object-contain" />
+                    </div>
+                    <div class="text-left">
+                        <h1 class="text-xs font-black tracking-[0.2em] uppercase text-blue-900 opacity-60">Transwisata</h1>
+                        <p class="text-xl font-black leading-tight text-blue-900">Prima Aviation</p>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="text-center">
+                        <h2 class="text-xl font-bold text-slate-800">Welcome Back</h2>
+                        <p class="text-xs text-slate-500 mt-1">Internal Leave Management Portal</p>
+                    </div>
+
+                    <form id="login-form" class="space-y-4">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Username</label>
+                            <div class="relative">
+                                <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
+                                <input type="text" id="username" placeholder="Enter username" required
+                                    class="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-medium text-sm">
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
+                            <div class="relative">
+                                <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
+                                <input type="password" id="password" placeholder="••••••••" required
+                                    class="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-medium text-sm">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-xl shadow-blue-200 transition-all active:scale-95">
+                            Sign In
+                        </button>
+                    </form>
+                    
+                    <div class="bg-blue-50 p-4 rounded-2xl text-[10px] text-blue-800 font-medium leading-relaxed">
+                        <p><i class="fas fa-info-circle mr-1"></i> <strong>Admin Access:</strong> head / HRD<br>
+                        - Password for all: TWA119-021<br>
+                        - Default User: user (Arya Wijaya)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WRAPPER APLIKASI UTAMA -->
+    <div id="app-wrapper" class="hidden flex h-screen overflow-hidden">
+        <aside class="w-64 aviation-gradient text-white hidden md:flex flex-col shadow-2xl">
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-8">
+                    <!-- LOGO SIDEBAR (Dihapus filter yang merusak visibilitas) -->
+                    <div class="h-10 w-10 shrink-0 bg-white p-1 rounded-lg">
+                        <img src="https://lh3.googleusercontent.com/d/14XvFbNETCuybdeUeH6BPrPaC33uBijMc" alt="Logo" class="w-full h-full object-contain" />
+                    </div>
+                    <div>
+                        <h1 class="text-xs font-bold tracking-widest uppercase opacity-80">Transwisata</h1>
+                        <p class="text-lg font-bold leading-tight text-blue-900">Prima Aviation</p>
+                    </div>
+                </div>
+                <nav class="space-y-1" id="dynamic-nav"></nav>
+            </div>
+            <div class="mt-auto p-6 bg-blue-900/30">
+                <div class="flex items-center gap-3 mb-4">
+                    <img id="user-avatar" src="" class="w-10 h-10 rounded-full border-2 border-blue-400 shadow-md" alt="User">
+                    <div class="overflow-hidden">
+                        <p id="user-name" class="text-sm font-bold truncate">User Name</p>
+                        <p id="user-role-label" class="text-[10px] uppercase opacity-70 tracking-tighter">Role</p>
+                    </div>
+                </div>
+                <button onclick="logout()" class="w-full py-2.5 px-4 rounded-xl bg-red-500/10 hover:bg-red-500/30 text-red-200 text-xs font-bold flex items-center justify-center gap-2 transition-all group">
+                    <i class="fas fa-sign-out-alt group-hover:-translate-x-1 transition-transform"></i> Logout
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col h-full overflow-y-auto bg-slate-50">
+            <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+                <div class="flex items-center gap-4">
+                    <!-- LOGO HEADER UNTUK MOBILE -->
+                    <div class="md:hidden h-8 w-auto">
+                        <img src="https://lh3.googleusercontent.com/d/14XvFbNETCuybdeUeH6BPrPaC33uBijMc" alt="Logo" class="h-full object-contain" />
+                    </div>
+                    <button id="global-back-btn" onclick="switchTab('dashboard')" class="hidden w-10 h-10 rounded-full hover:bg-slate-100 items-center justify-center text-slate-400 transition-all">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h2 id="page-title" class="text-xl font-black text-slate-800 uppercase tracking-tight">Dashboard</h2>
+                        <p id="page-subtitle" class="text-xs text-slate-500 font-medium">Leave Management Panel</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 sm:gap-4">
+                    <div id="current-date" class="hidden lg:block text-xs font-bold text-slate-400 bg-slate-50 px-4 py-2 rounded-full border border-slate-100"></div>
+                    <div class="h-8 w-px bg-slate-100 mx-1 hidden sm:block"></div>
+                    <button onclick="logout()" class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all group">
+                        <span class="hidden sm:inline text-[10px] font-black uppercase tracking-widest">Logout</span>
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </header>
+            <div id="main-content" class="p-8"></div>
+        </main>
+    </div>
+
+    <!-- MODAL: NEW LEAVE REQUEST FORM -->
+    <div id="modal-request" class="fixed inset-0 z-[150] modal-overlay hidden items-center justify-center p-4">
+        <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
+            <div class="aviation-gradient p-8 text-white relative shrink-0">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <button onclick="closeRequestModal()" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"><i class="fas fa-arrow-left text-xs"></i></button>
+                        <h3 class="text-2xl font-black">New Leave Request</h3>
+                    </div>
+                    <button onclick="closeRequestModal()" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <form id="leave-request-form" class="p-10 space-y-6 bg-white overflow-y-auto no-scrollbar flex-1">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Division</label>
+                        <input type="text" id="r-division" readonly class="w-full px-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-100 font-semibold text-sm cursor-not-allowed">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Position</label>
+                        <input type="text" id="r-position" readonly class="w-full px-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-100 font-semibold text-sm cursor-not-allowed">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Target Head Department <span class="text-red-500">*</span></label>
+                        <select id="r-target-head" required class="w-full px-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-semibold text-sm">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Leave Type</label>
+                        <select id="r-type" required class="w-full px-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-semibold text-sm" onchange="onLeaveTypeChange()">
+                            <option value="">Select Type</option>
+                            <option value="Annual Leave">Annual Leave</option>
+                            <option value="Special Leave">Special Leave (Religious/Hajj/Umrah)</option>
+                            <option value="Marriage Leave">Marriage (3 Days)</option>
+                            <option value="Child's Marriage Leave">Child's Marriage (2 Days)</option>
+                            <option value="Paternity/Miscarriage Leave">Paternity / Miscarriage (2 Days)</option>
+                            <option value="Child's Circumcision Leave">Child's Circumcision (2 Days)</option>
+                            <option value="Child's Baptism Leave">Child's Baptism (2 Days)</option>
+                            <option value="Immediate Family Death Leave">Death of Immediate Household Family (2 Days)</option>
+                            <option value="Other Household Death Leave">Death of Other Household Member (1 Day)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Handover To (Delegation)</label>
+                        <input type="text" id="r-handover" placeholder="Colleague Name" required class="w-full px-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-semibold text-sm">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 items-end">
+                         <div class="space-y-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Start Date</label>
+                            <input type="date" id="r-start" required class="w-full px-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-semibold text-sm">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">End Date</label>
+                            <input type="date" id="r-end" required class="w-full px-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-semibold text-sm">
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-2xl text-center border border-blue-100">
+                    <p class="text-[9px] font-black text-blue-400 uppercase">Total Duration</p>
+                    <p id="r-duration-view" class="text-xl font-black text-blue-700">0 Days</p>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Reason/Details</label>
+                    <textarea id="r-reason" rows="3" placeholder="Explain your leave purpose..." required class="w-full px-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-medium text-sm"></textarea>
+                </div>
+                <button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-xl shadow-blue-200 transition-all flex items-center justify-center gap-3">
+                    Submit Request <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: REQUEST DETAILS & PRINT AREA -->
+    <div id="modal-detail" class="fixed inset-0 z-[150] modal-overlay hidden items-center justify-center p-4">
+        <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
+            <div id="print-area" class="p-10 overflow-y-auto no-scrollbar flex-1">
+                <div class="flex justify-between items-start mb-8 pb-6 border-b border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <!-- LOGO PADA AREA PRINT -->
+                        <div class="h-12 w-auto">
+                            <img src="https://lh3.googleusercontent.com/d/14XvFbNETCuybdeUeH6BPrPaC33uBijMc" alt="Logo" class="h-full object-contain" />
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-black uppercase text-blue-900 tracking-widest">Transwisata</h4>
+                            <p class="text-sm font-black text-blue-900">Prima Aviation</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">Leave Request Form</h3>
+                        <p id="detail-id" class="text-xs font-bold text-slate-400 tracking-widest mt-1">#TWA-000</p>
+                    </div>
+                </div>
+                <div id="modal-body" class="space-y-6"></div>
+                <div class="mt-12 grid grid-cols-2 gap-8 text-center border-t border-slate-100 pt-8">
+                    <div class="space-y-12">
+                        <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Head of Department</p>
+                        <div class="h-px bg-slate-200 w-32 mx-auto"></div>
+                        <p class="text-[9px] text-slate-300 italic font-medium">(Signature & Full Name)</p>
+                    </div>
+                    <div class="space-y-12">
+                        <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">HR Department</p>
+                        <div class="h-px bg-slate-200 w-32 mx-auto"></div>
+                        <p class="text-[9px] text-slate-300 italic font-medium">(Signature & Full Name)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 no-print shrink-0">
+                <button onclick="closeDetail()" class="flex-1 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-600 hover:bg-slate-100 transition-all">Back</button>
+                <button onclick="window.print()" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-print"></i> Print to PDF (A4)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="toast" class="fixed bottom-8 right-8 z-[200] hidden animate-fade-in">
+        <div class="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4">
+            <div id="toast-icon" class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm">
+                <i class="fas fa-check"></i>
+            </div>
+            <p id="toast-msg" class="text-sm font-bold">Operation Successful</p>
+        </div>
+    </div>
+
+    <script>
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const blob = new Blob([`
+                    self.addEventListener('install', (e) => {
+                        self.skipWaiting();
+                    });
+                    self.addEventListener('activate', (e) => {
+                        e.waitUntil(clients.claim());
+                    });
+                    self.addEventListener('fetch', (e) => {
+                        e.respondWith(fetch(e.request));
+                    });
+                `], { type: 'application/javascript' });
+                const workerUrl = URL.createObjectURL(blob);
+                navigator.serviceWorker.register(workerUrl).catch(err => console.log("SW Reg Failed", err));
+            });
+        }
+
+        // Form Data & Logic Constants
+        const DIVISIONS = ["Operation", "Maintenance", "Safety", "Staf"];
+        const POSITIONS = [
+            "Director", "Safety, Quality & Security Manager", "General Manager", "Operation Manager", 
+            "Maintenance Manager", "Chief Pilot Fixed Wing", "Chief Pilot Rotary Wing", "Chief Flight Support", 
+            "Chief Engineer", "Chief Inspector", "Chief Finance, Accounting & Tax", "Chief Engineering", 
+            "Human Resource Development", "Line Pilot", "Engineer", "Cabin Service", "Staf", 
+            "Flight Support", "Ground Support", "Finance", "Logistic", "Engineering", 
+            "Aviation Security", "Kurir", "Driver"
+        ];
+
+        const HEAD_POSITIONS = [
+            "Operation Manager", "Maintenance Manager", "Chief Pilot Rotary Wing", 
+            "Chief Pilot Fixed Wing", "Chief Flight Support", "Chief Engineer", "HRD"
+        ];
+
+        const POLICY_DURATIONS = {
+            "Marriage Leave": 3,
+            "Child's Marriage Leave": 2,
+            "Paternity/Miscarriage Leave": 2,
+            "Child's Circumcision Leave": 2,
+            "Child's Baptism Leave": 2,
+            "Immediate Family Death Leave": 2,
+            "Other Household Death Leave": 1
+        };
+
+        // Persistent System State
+        let users = [
+            { 
+                id: 'USR-001', name: 'Capt. Arya Wijaya', division: 'Operation', position: 'Chief Pilot Fixed Wing', 
+                email: 'arya@transwisata.com', username: 'arya@transwisata.com', password: 'arya@transwisata.com',
+                annualQuota: 12, specialQuota: 40, used: 4, pending: 1
+            }
+        ];
+
+        let heads = [
+            { id: 'HEAD-001', name: 'Capt. Bambang', division: 'Operation', position: 'Operation Manager', email: 'bambang@transwisata.com', username: 'bambang@transwisata.com', password: 'bambang@transwisata.com' }
+        ];
+
+        let leaveRequests = [
+            { id: 'TWA-001', name: 'Capt. Arya Wijaya', division: 'Operation', position: 'Chief Pilot Fixed Wing', targetHeadPosition: 'Operation Manager', type: 'Annual Leave', duration: 3, start: '2024-05-10', end: '2024-05-12', status: 'HEAD_DEPT_REVIEW', reason: 'Family event in Yogyakarta', handover: 'Capt. Bambang', submittedAt: '2024-05-01' }
+        ];
+
+        const ROLES = { STAFF: 'staff', HEAD: 'head', HRD: 'hrd' };
+        let currentUser = null;
+        let editingUserId = null;
+        let editingHeadId = null;
+
+        const $ = (id) => document.getElementById(id);
+
+        function formatDate(dateStr) {
+            if (!dateStr) return "-";
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        }
+
+        function showToast(msg, type = 'success') {
+            $('toast-msg').innerText = msg;
+            $('toast-icon').className = `w-8 h-8 rounded-full flex items-center justify-center text-sm ${type === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`;
+            $('toast-icon').innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : 'times'}"></i>`;
+            $('toast').classList.remove('hidden');
+            setTimeout(() => $('toast').classList.add('hidden'), 3000);
+        }
+
+        // --- AUTHENTICATION ---
+        $('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const u = $('username').value.trim();
+            const p = $('password').value.trim();
+            if (p === 'TWA119-021') {
+                if (u === 'head') { loginAs(ROLES.HEAD, 'Head of Department', heads[0]); return; }
+                if (u === 'HRD') { loginAs(ROLES.HRD, 'HR Department'); return; }
+            }
+            const headMatch = heads.find(h => h.username === u && h.password === p);
+            if (headMatch) { loginAs(ROLES.HEAD, headMatch.name, headMatch); return; }
+            const userMatch = users.find(usr => usr.username === u && usr.password === p);
+            if (userMatch) loginAs(ROLES.STAFF, userMatch.name, userMatch);
+            else if (u === 'user' && p === 'TWA119-021') loginAs(ROLES.STAFF, users[0].name, users[0]);
+            else alert('Invalid Credentials!');
+        });
+
+        function loginAs(role, name, data = null) {
+            currentUser = { role, name, data };
+            $('login-page').classList.add('hidden');
+            $('app-wrapper').classList.remove('hidden');
+            $('user-name').innerText = name;
+            $('user-role-label').innerText = role === ROLES.STAFF ? (data ? data.position : 'Staff') : (role === ROLES.HEAD ? data.position : role.toUpperCase());
+            $('user-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e3a8a&color=fff&bold=true`;
+            setupNavigation();
+            switchTab('dashboard');
+        }
+
+        function logout() {
+            $('app-wrapper').classList.add('hidden');
+            $('login-page').classList.remove('hidden');
+            $('login-form').reset();
+            currentUser = null;
+        }
+
+        // --- NAVIGATION ---
+        function setupNavigation() {
+            const nav = $('dynamic-nav');
+            nav.innerHTML = '';
+            const menu = [
+                { id: 'dashboard', label: 'Dashboard', icon: 'th-large', roles: [ROLES.STAFF, ROLES.HEAD, ROLES.HRD] },
+                { id: 'request_trigger', label: 'Request Leave', icon: 'plus-circle', roles: [ROLES.STAFF], action: openRequestModal },
+                { id: 'employees', label: 'Manage Employees', icon: 'users-cog', roles: [ROLES.HRD] },
+                { id: 'heads', label: 'Manage Heads', icon: 'user-tie', roles: [ROLES.HRD] },
+                { id: 'approval', label: 'Approvals', icon: 'check-double', roles: [ROLES.HEAD, ROLES.HRD] },
+                { id: 'history', label: 'Leave History', icon: 'history', roles: [ROLES.STAFF, ROLES.HEAD, ROLES.HRD] }
+            ];
+            menu.forEach(item => {
+                if (item.roles.includes(currentUser.role)) {
+                    const clickAction = item.action ? `openRequestModal()` : `switchTab('${item.id}')`;
+                    nav.innerHTML += `<a href="#" onclick="${clickAction}" id="nav-${item.id}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-blue-100 hover:bg-blue-800 group"><i class="fas fa-${item.icon} w-5 text-center group-hover:scale-110 transition-transform"></i><span>${item.label}</span></a>`;
+                }
+            });
+        }
+
+        function switchTab(tab) {
+            if (tab === 'request_trigger') return;
+            $('global-back-btn').classList.toggle('hidden', tab === 'dashboard');
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('bg-blue-700/50', 'border-l-4', 'border-blue-300', 'text-white');
+                el.classList.add('text-blue-100');
+            });
+            const active = $(`nav-${tab}`);
+            if (active) {
+                active.classList.add('bg-blue-700/50', 'border-l-4', 'border-blue-300', 'text-white');
+                active.classList.remove('text-blue-100');
+            }
+            $('page-title').innerText = tab.charAt(0).toUpperCase() + tab.slice(1).replace('-', ' ');
+            if (tab === 'dashboard') loadDashboard();
+            else if (tab === 'history') loadHistory();
+            else if (tab === 'approval') loadApprovalList();
+            else if (tab === 'employees') loadEmployeeManager();
+            else if (tab === 'heads') loadHeadManager();
+        }
+
+        // --- LEAVE LOGIC ---
+        function onLeaveTypeChange() {
+            const type = $('r-type').value;
+            const startVal = $('r-start').value;
+            if (POLICY_DURATIONS[type]) {
+                $('r-end').readOnly = true;
+                $('r-end').classList.add('bg-slate-100', 'cursor-not-allowed');
+                if (startVal) calculateFixedEnd();
+            } else {
+                $('r-end').readOnly = false;
+                $('r-end').classList.remove('bg-slate-100', 'cursor-not-allowed');
+            }
+            updateDur();
+        }
+
+        function calculateFixedEnd() {
+            const type = $('r-type').value;
+            const start = new Date($('r-start').value);
+            const duration = POLICY_DURATIONS[type];
+            if (start && !isNaN(start.getTime()) && duration) {
+                const endDate = new Date(start);
+                endDate.setDate(start.getDate() + (duration - 1));
+                $('r-end').value = endDate.toISOString().split('T')[0];
+            }
+        }
+
+        function openRequestModal() {
+            const data = currentUser.data || users[0];
+            $('r-division').value = data.division || '-';
+            $('r-position').value = data.position || '-';
+            const targetHeadSelect = $('r-target-head');
+            targetHeadSelect.innerHTML = '<option value="">Select Target Head</option>';
+            heads.forEach(h => { targetHeadSelect.innerHTML += `<option value="${h.position}">${h.position} (${h.name})</option>`; });
+            $('modal-request').classList.remove('hidden'); 
+            $('modal-request').classList.add('flex'); 
+        }
+
+        function closeRequestModal() { 
+            $('modal-request').classList.add('hidden'); 
+            $('modal-request').classList.remove('flex'); 
+            $('leave-request-form').reset(); 
+            $('r-end').readOnly = false;
+            $('r-end').classList.remove('bg-slate-100');
+            $('r-duration-view').innerText = "0 Days";
+        }
+
+        const updateDur = () => {
+            const s = $('r-start').value;
+            const e = $('r-end').value;
+            const type = $('r-type').value;
+            if (POLICY_DURATIONS[type] && s) { calculateFixedEnd(); $('r-duration-view').innerText = POLICY_DURATIONS[type] + " Days"; }
+            else if (s && e) { const diff = Math.ceil((new Date(e) - new Date(s)) / (1000 * 60 * 60 * 24)) + 1; $('r-duration-view').innerText = (diff > 0 ? diff : 0) + " Days"; }
+        };
+
+        $('r-start').addEventListener('change', updateDur);
+        $('r-end').addEventListener('change', updateDur);
+
+        $('leave-request-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const dur = parseInt($('r-duration-view').innerText);
+            const type = $('r-type').value;
+            const targetHead = $('r-target-head').value;
+            const userRef = currentUser.data || users[0];
+            if (dur <= 0) return alert('Invalid date range!');
+            if (!targetHead) return alert('Please select a Target Head Department!');
+            const newReq = {
+                id: 'TWA-' + Math.floor(1000 + Math.random() * 9000),
+                name: currentUser.name, division: userRef.division, position: userRef.position,
+                targetHeadPosition: targetHead, type: type, duration: dur, start: $('r-start').value,
+                end: $('r-end').value, status: 'HEAD_DEPT_REVIEW', reason: $('r-reason').value,
+                handover: $('r-handover').value, submittedAt: new Date().toISOString().split('T')[0]
+            };
+            leaveRequests.unshift(newReq);
+            userRef.pending++;
+            if (type === 'Annual Leave') userRef.annualQuota -= dur;
+            else if (type === 'Special Leave') userRef.specialQuota -= dur;
+            showToast('Request submitted successfully.');
+            closeRequestModal(); loadDashboard();
+        });
+
+        window.cancelRequest = function(id) {
+            if (confirm('Are you sure you want to cancel this request?')) {
+                const req = leaveRequests.find(r => r.id === id);
+                if (req && req.status === 'HEAD_DEPT_REVIEW') {
+                    req.status = 'CANCELED';
+                    const userRef = users.find(u => u.name === req.name);
+                    if (userRef) { userRef.pending--; if (req.type === 'Annual Leave') userRef.annualQuota += req.duration; else if (req.type === 'Special Leave') userRef.specialQuota += req.duration; }
+                    showToast('Request canceled.', 'error');
+                    loadDashboard(); if ($('page-title').innerText.toLowerCase().includes('history')) loadHistory();
+                }
+            }
+        };
+
+        function loadDashboard() {
+            if (currentUser.role === ROLES.STAFF) loadStaffDashboard();
+            else if (currentUser.role === ROLES.HEAD) loadHeadDashboard();
+            else loadAdminDashboard();
+        }
+
+        function loadStaffDashboard() {
+            const data = currentUser.data || users[0];
+            const myRequests = leaveRequests.filter(r => r.name === currentUser.name);
+            const activeReq = myRequests.find(r => r.status === 'HEAD_DEPT_REVIEW' || r.status === 'HRD_APPROVAL');
+            $('main-content').innerHTML = `
+                <div class="space-y-8 animate-fade-in">
+                    <div class="flex justify-between items-center"><h3 class="font-bold text-slate-800">Summary for ${currentUser.name}</h3><button onclick="openRequestModal()" class="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center gap-2"><i class="fas fa-plus"></i> New Request</button></div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div class="glass-card p-6 rounded-3xl border border-slate-100"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Annual Quota</p><h3 class="text-3xl font-black text-blue-900">${data.annualQuota} Days</h3></div>
+                        <div class="glass-card p-6 rounded-3xl border border-slate-100"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Special Quota</p><h3 class="text-3xl font-black text-blue-900">${data.specialQuota} Days</h3></div>
+                        <div class="glass-card p-6 rounded-3xl border border-slate-100"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Used</p><h3 class="text-3xl font-black text-emerald-600">${data.used} Days</h3></div>
+                        <div class="glass-card p-6 rounded-3xl border border-slate-100"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Pending</p><h3 class="text-3xl font-black text-amber-500">${data.pending} Req</h3></div>
+                    </div>
+                    <div class="glass-card p-8 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <h4 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-6">Current Request Status</h4>
+                        ${activeReq ? `
+                            <div class="p-6 bg-blue-50 border border-blue-100 rounded-3xl flex justify-between items-center">
+                                <div class="flex items-center gap-4 cursor-pointer flex-1" onclick="showDetail('${activeReq.id}')">
+                                    <div class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-blue-600 shadow-sm"><i class="fas fa-plane"></i></div>
+                                    <div><p class="text-sm font-black text-slate-800">${activeReq.type}</p><p class="text-xs text-slate-500 font-medium">${formatDate(activeReq.start)} to ${formatDate(activeReq.end)}</p></div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="px-3 py-1 bg-amber-100 text-amber-600 rounded-full text-[9px] font-black uppercase">${activeReq.status.replace(/_/g, ' ')}</span>
+                                    ${activeReq.status === 'HEAD_DEPT_REVIEW' ? `<button onclick="cancelRequest('${activeReq.id}')" class="px-3 py-1 bg-red-50 text-red-600 rounded-full text-[9px] font-black uppercase hover:bg-red-600 hover:text-white transition-all">Cancel</button>` : ''}
+                                </div>
+                            </div>
+                        ` : '<p class="text-sm text-slate-400 italic">No active requests found.</p>'}
+                    </div>
+                </div>`;
+        }
+
+        function loadHeadDashboard() {
+            const target = currentUser.data.position;
+            const pending = leaveRequests.filter(r => r.status === 'HEAD_DEPT_REVIEW' && r.targetHeadPosition === target);
+            $('main-content').innerHTML = `
+                <div class="space-y-8 animate-fade-in">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="glass-card p-8 rounded-[2rem] shadow-sm"><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Head Dept Profile</p><h3 class="text-2xl font-black text-blue-900">${currentUser.name}</h3><p class="text-xs text-blue-500 font-bold uppercase">${currentUser.data.position}</p></div>
+                        <div class="glass-card p-8 rounded-[2rem] shadow-sm bg-amber-50 border-amber-100"><p class="text-[10px] font-black text-amber-500 uppercase mb-2">Incoming</p><h3 class="text-4xl font-black text-amber-700">${pending.length} Pending</h3></div>
+                    </div>
+                    <div class="glass-card rounded-[2rem] shadow-sm overflow-hidden border border-slate-100">
+                        <div class="p-6 bg-slate-50/50 border-b flex justify-between items-center font-black text-xs uppercase tracking-widest"><span>Queue</span><button onclick="switchTab('approval')" class="text-blue-600 hover:underline">Manage All <i class="fas fa-arrow-right ml-1"></i></button></div>
+                        <table class="w-full text-left"><tbody class="divide-y divide-slate-100">${pending.slice(0, 5).map(r => `<tr onclick="switchTab('approval')" class="hover:bg-slate-50 cursor-pointer"><td class="px-6 py-4"><p class="text-sm font-bold text-slate-800">${r.name}</p><p class="text-[9px] text-slate-400 uppercase tracking-tighter">ID: ${r.id}</p></td><td class="px-6 py-4 text-xs font-semibold text-slate-500">${r.type}</td><td class="px-6 py-4 text-xs text-slate-400 font-medium">${formatDate(r.start)}</td><td class="px-6 py-4 text-right"><i class="fas fa-chevron-right text-slate-200"></i></td></tr>`).join('') || '<tr><td class="p-10 text-center text-slate-400 italic">No pending requests.</td></tr>'}</tbody></table>
+                    </div>
+                </div>`;
+        }
+
+        function loadAdminDashboard() {
+            const pending = leaveRequests.filter(r => r.status === 'HRD_APPROVAL');
+            $('main-content').innerHTML = `
+                <div class="space-y-8 animate-fade-in">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="glass-card p-8 rounded-[2rem] shadow-sm"><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">HRD Admin Profile</p><h3 class="text-2xl font-black text-blue-900">${currentUser.name}</h3></div>
+                        <div class="glass-card p-8 rounded-[2rem] shadow-sm bg-amber-50 border-amber-100"><p class="text-[10px] font-black text-amber-500 uppercase mb-2">Final Stage</p><h3 class="text-4xl font-black text-amber-700">${pending.length} Requests</h3></div>
+                    </div>
+                </div>`;
+        }
+
+        function loadHeadManager() {
+            $('main-content').innerHTML = `
+                <div class="animate-fade-in space-y-10">
+                    <div class="flex justify-between items-center"><h3 class="text-xl font-black text-slate-800 uppercase tracking-tight">Head Dept Management</h3><button onclick="switchTab('dashboard')" class="px-4 py-2 bg-slate-100 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all">Back</button></div>
+                    <div class="glass-card p-10 rounded-[2.5rem] shadow-xl border border-white">
+                        <h4 class="text-sm font-black text-blue-900 uppercase tracking-widest mb-8 pb-2 border-b border-blue-50">${editingHeadId ? 'Edit Head' : 'Add Head Dept Data'}</h4>
+                        <form id="head-form" class="space-y-8">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label><input type="text" id="h-name" required class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-semibold text-sm"></div>
+                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Division</label><select id="h-division" required class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-semibold text-sm">${DIVISIONS.map(d => `<option value="${d}">${d}</option>`).join('')}</select></div>
+                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Position</label><select id="h-position" required class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-semibold text-sm">${HEAD_POSITIONS.map(p => `<option value="${p}">${p}</option>`).join('')}</select></div>
+                                <div class="space-y-1 lg:col-span-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label><input type="email" id="h-email" required class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-semibold text-sm" oninput="syncHeadPass(this.value)"></div>
+                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Username</label><input type="text" id="h-username" readonly class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-200 cursor-not-allowed font-semibold text-sm"></div>
+                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label><input type="text" id="h-password" readonly class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-200 cursor-not-allowed font-semibold text-sm"></div>
+                            </div>
+                            <div class="flex gap-4 pt-4"><button type="button" onclick="cancelHeadEdit()" class="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold">Cancel</button><button type="submit" class="flex-[3] py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700 transition-all">${editingHeadId ? 'Update Head' : 'Save Head Data'}</button></div>
+                        </form>
+                    </div>
+                    <div class="glass-card rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-sm"><table class="w-full text-left"><thead class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b"><tr><th class="px-8 py-5">Head Info</th><th class="px-6 py-5">Division/Position</th><th class="px-8 py-5 text-right">Actions</th></tr></thead><tbody class="divide-y divide-slate-50">${heads.map(h => `<tr class="hover:bg-slate-50/80 transition-all"><td class="px-8 py-5"><p class="text-sm font-black text-slate-800">${h.name}</p><p class="text-[10px] text-slate-400">${h.email}</p></td><td class="px-6 py-5"><p class="text-xs font-bold text-slate-600 uppercase">${h.division}</p><p class="text-[10px] text-slate-400">${h.position}</p></td><td class="px-8 py-5 text-right"><div class="flex justify-end gap-2"><button onclick="editHead('${h.id}')" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 transition-all"><i class="fas fa-edit text-[10px]"></i></button><button onclick="deleteHead('${h.id}')" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-600 transition-all"><i class="fas fa-trash text-[10px]"></i></button></div></td></tr>`).join('')}</tbody></table></div>
+                </div>`;
+            $('head-form').addEventListener('submit', handleHeadSubmit);
+        }
+
+        function handleHeadSubmit(e) {
+            e.preventDefault();
+            const newHead = { id: editingHeadId || 'HEAD-' + Math.floor(1000 + Math.random() * 9000), name: $('h-name').value, division: $('h-division').value, position: $('h-position').value, email: $('h-email').value, username: $('h-username').value, password: $('h-password').value };
+            if (editingHeadId) { const idx = heads.findIndex(h => h.id === editingHeadId); heads[idx] = newHead; showToast('Head updated'); }
+            else { heads.push(newHead); showToast('Head registered'); }
+            editingHeadId = null; loadHeadManager();
+        }
+
+        function syncHeadPass(val) { $('h-username').value = val; $('h-password').value = val; }
+        function cancelHeadEdit() { editingHeadId = null; loadHeadManager(); }
+        function editHead(id) { editingHeadId = id; const h = heads.find(h => h.id === id); loadHeadManager(); $('h-name').value = h.name; $('h-division').value = h.division; $('h-position').value = h.position; $('h-email').value = h.email; syncHeadPass(h.email); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+        function deleteHead(id) { if (confirm('Delete Head?')) { heads = heads.filter(h => h.id !== id); loadHeadManager(); showToast('Removed', 'error'); } }
+
+        function loadEmployeeManager() {
+            $('main-content').innerHTML = `
+                <div class="animate-fade-in space-y-10">
+                    <div class="flex justify-between items-center"><h3 class="text-xl font-black text-slate-800 uppercase tracking-tight">Employee Registration</h3><button onclick="switchTab('dashboard')" class="px-4 py-2 bg-slate-100 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all">Back</button></div>
+                    <div class="glass-card p-10 rounded-[2.5rem] shadow-xl border border-white">
+                        <h4 class="text-sm font-black text-blue-900 uppercase tracking-widest mb-8 pb-2 border-b border-blue-50">${editingUserId ? 'Edit Employee' : 'Register New Employee'}</h4>
+                        <form id="employee-form" class="space-y-8">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div class="space-y-1 lg:col-span-2"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label><input type="text" id="e-name" required class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-semibold text-sm"></div>
+                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Division</label><select id="e-division" required class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-semibold text-sm">${DIVISIONS.map(d => `<option value="${d}">${d}</option>`).join('')}</select></div>
+                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Position</label><select id="e-position" required class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-semibold text-sm">${POSITIONS.map(p => `<option value="${p}">${p}</option>`).join('')}</select></div>
+                                <div class="space-y-1 lg:col-span-2"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label><input type="email" id="e-email" required class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-semibold text-sm" oninput="syncUserPass(this.value)"></div>
+                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Annual Leave (Days)</label><input type="number" id="e-annual" required class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-semibold text-sm"></div>
+                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Special Leave (Days)</label><input type="number" id="e-special" required class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-semibold text-sm"></div>
+                                <div class="space-y-1 lg:col-span-2"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Username</label><input type="text" id="e-username" readonly class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-200 cursor-not-allowed font-semibold text-sm"></div>
+                                <div class="space-y-1 lg:col-span-2"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label><input type="text" id="e-password" readonly class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-200 cursor-not-allowed font-semibold text-sm"></div>
+                            </div>
+                            <div class="flex gap-4 pt-4"><button type="button" onclick="cancelEdit()" class="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold uppercase tracking-widest text-xs">Reset/Cancel</button><button type="submit" class="flex-[3] py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all">${editingUserId ? 'Update Employee' : 'Save Employee'}</button></div>
+                        </form>
+                    </div>
+                    <div class="glass-card rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-sm"><table class="w-full text-left"><thead class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b"><tr><th class="px-8 py-5">Employee Info</th><th class="px-6 py-5">Division/Position</th><th class="px-6 py-5">Quotas (A/S)</th><th class="px-8 py-5 text-right">Actions</th></tr></thead><tbody class="divide-y divide-slate-50">${users.map(u => `<tr class="hover:bg-slate-50/80 transition-all"><td class="px-8 py-5"><p class="text-sm font-black text-slate-800">${u.name}</p><p class="text-[10px] text-slate-400">${u.email}</p></td><td class="px-6 py-5"><p class="text-xs font-bold text-slate-600 uppercase">${u.division}</p><p class="text-[10px] text-slate-400">${u.position}</p></td><td class="px-6 py-5"><div class="flex items-center gap-2"><span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-[9px] font-black">${u.annualQuota}A</span><span class="px-2 py-1 bg-amber-50 text-amber-600 rounded text-[9px] font-black">${u.specialQuota}S</span></div></td><td class="px-8 py-5 text-right"><div class="flex justify-end gap-2"><button onclick="editUser('${u.id}')" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 transition-all"><i class="fas fa-edit text-[10px]"></i></button><button onclick="deleteUser('${u.id}')" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-600 transition-all"><i class="fas fa-trash text-[10px]"></i></button></div></td></tr>`).join('')}</tbody></table></div>
+                </div>`;
+            $('employee-form').addEventListener('submit', handleEmployeeSubmit);
+        }
+
+        function handleEmployeeSubmit(e) {
+            e.preventDefault();
+            const newUser = { id: editingUserId || 'USR-' + Math.floor(1000 + Math.random() * 9000), name: $('e-name').value, division: $('e-division').value, position: $('e-position').value, email: $('e-email').value, username: $('e-username').value, password: $('e-password').value, annualQuota: parseInt($('e-annual').value), specialQuota: parseInt($('e-special').value), used: editingUserId ? users.find(u => u.id === editingUserId).used : 0, pending: editingUserId ? users.find(u => u.id === editingUserId).pending : 0 };
+            if (editingUserId) { const idx = users.findIndex(u => u.id === editingUserId); users[idx] = newUser; showToast('Employee updated'); }
+            else { users.push(newUser); showToast('Employee registered'); }
+            editingUserId = null; loadEmployeeManager();
+        }
+
+        function syncUserPass(val) { $('e-username').value = val; $('e-password').value = val; }
+        function cancelEdit() { editingUserId = null; loadEmployeeManager(); }
+        function editUser(id) { editingUserId = id; const u = users.find(u => u.id === id); loadEmployeeManager(); $('e-name').value = u.name; $('e-division').value = u.division; $('e-position').value = u.position; $('e-email').value = u.email; $('e-annual').value = u.annualQuota; $('e-special').value = u.specialQuota; syncUserPass(u.email); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+        function deleteUser(id) { if (confirm('Delete employee?')) { users = users.filter(u => u.id !== id); loadEmployeeManager(); showToast('Removed', 'error'); } }
+
+        function loadHistory() {
+            let data = leaveRequests;
+            if (currentUser.role === ROLES.STAFF) data = data.filter(r => r.name === currentUser.name);
+            else if (currentUser.role === ROLES.HEAD) data = data.filter(r => r.targetHeadPosition === currentUser.data.position);
+            $('main-content').innerHTML = `
+                <div class="space-y-6 animate-fade-in">
+                    <div class="flex justify-between items-center"><h3 class="text-xl font-black text-slate-800 uppercase tracking-tight">Full Activity Log</h3><button onclick="switchTab('dashboard')" class="px-4 py-2 bg-slate-100 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all">Back</button></div>
+                    <div class="glass-card rounded-[2.5rem] border border-slate-100 overflow-hidden"><table class="w-full text-left"><thead class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b"><tr><th class="px-8 py-5">Employee Info</th><th class="px-6 py-5">Period</th><th class="px-6 py-5">Status</th><th class="px-8 py-5 text-right">Action</th></tr></thead><tbody class="divide-y divide-slate-50">${data.map(r => `<tr class="hover:bg-slate-50 transition-all group"><td class="px-8 py-5 cursor-pointer" onclick="showDetail('${r.id}')"><p class="text-sm font-black text-slate-800">${r.name}</p><p class="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">${r.division} | ${r.position}</p></td><td class="px-6 py-5"><p class="text-xs font-bold text-slate-700">${r.type}</p><p class="text-[10px] text-slate-400 font-medium">${formatDate(r.start)} (${r.duration} Days)</p></td><td class="px-6 py-5"><span class="px-3 py-1 rounded-full text-[9px] font-black uppercase ${r.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : r.status === 'REJECTED' ? 'bg-red-100 text-red-600' : r.status === 'CANCELED' ? 'bg-slate-100 text-slate-400' : 'bg-amber-100 text-amber-600'}">${r.status.replace(/_/g, ' ')}</span></td><td class="px-8 py-5 text-right"><div class="flex justify-end gap-2"><button onclick="showDetail('${r.id}')" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 transition-all"><i class="fas fa-eye text-[10px]"></i></button>${(currentUser.role === ROLES.STAFF && r.status === 'HEAD_DEPT_REVIEW') ? `<button onclick="cancelRequest('${r.id}')" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-600 transition-all"><i class="fas fa-times text-[10px]"></i></button>` : ''}</div></td></tr>`).join('')}</tbody></table></div></div>`;
+        }
+
+        function loadApprovalList() {
+            let pending = [];
+            if (currentUser.role === ROLES.HEAD) { pending = leaveRequests.filter(r => r.status === 'HEAD_DEPT_REVIEW' && r.targetHeadPosition === currentUser.data.position); }
+            else if (currentUser.role === ROLES.HRD) { pending = leaveRequests.filter(r => r.status === 'HRD_APPROVAL'); }
+            const history = leaveRequests.filter(r => ['APPROVED', 'REJECTED'].includes(r.status));
+            let html = `<div class="space-y-8 animate-fade-in"><div class="flex justify-between items-center"><h3 class="text-xl font-black text-slate-800 uppercase tracking-tight">Approval Queue</h3><button onclick="switchTab('dashboard')" class="px-4 py-2 bg-slate-100 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all">Back</button></div><div class="grid grid-cols-1 gap-4">${pending.map(r => `<div class="glass-card p-6 rounded-[2rem] border border-slate-100 flex flex-col lg:flex-row items-center justify-between gap-6"><div class="flex items-center gap-4"><div class="w-14 h-14 rounded-2xl aviation-gradient flex items-center justify-center text-white shadow-lg"><i class="fas fa-user-circle text-2xl"></i></div><div><h4 class="text-lg font-black text-slate-800">${r.name}</h4><p class="text-[10px] text-blue-600 font-black uppercase tracking-widest">${r.division} • ${r.position}</p><p class="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">${r.type} • ${r.duration} Days</p></div></div><div class="flex-1 bg-slate-50 p-4 rounded-2xl text-xs italic text-slate-600 border border-slate-100">"${r.reason}"<p class="mt-2 text-[9px] font-black text-blue-600 uppercase not-italic">Handover: ${r.handover}</p></div><div class="flex gap-2 w-full lg:w-auto"><button onclick="handleApproval('${r.id}', false)" class="flex-1 px-6 py-3 bg-red-50 text-red-600 rounded-xl font-bold text-xs uppercase hover:bg-red-600 transition-all">Reject</button><button onclick="handleApproval('${r.id}', true)" class="flex-[2] px-8 py-3 bg-blue-600 text-white rounded-xl font-black text-xs uppercase hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all">Approve</button></div></div>`).join('') || '<p class="p-20 text-center text-slate-400 italic glass-card rounded-[2rem]">Queue is empty.</p>'}</div>`;
+            if (currentUser.role === ROLES.HRD) { html += `<div class="space-y-4 pt-4"><h4 class="text-xs font-black uppercase text-slate-400 tracking-widest">Final HRD Decision Log</h4><div class="glass-card rounded-[2rem] border border-slate-100 overflow-hidden"><table class="w-full text-left"><thead class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b"><tr><th class="px-8 py-5">Employee</th><th class="px-6 py-5">Type</th><th class="px-6 py-5">Date</th><th class="px-6 py-5">Final Status</th><th class="px-8 py-5 text-right">Details</th></tr></thead><tbody class="divide-y divide-slate-50">${history.map(r => `<tr onclick="showDetail('${r.id}')" class="hover:bg-slate-50 cursor-pointer"><td class="px-8 py-5"><p class="text-sm font-bold text-slate-800">${r.name}</p><p class="text-[9px] text-slate-400 font-bold uppercase">${r.division} | ${r.position}</p></td><td class="px-6 py-5 text-xs text-slate-600 font-medium">${r.type}</td><td class="px-6 py-5 text-xs text-slate-500 font-medium">${formatDate(r.start)}</td><td class="px-6 py-5"><span class="px-3 py-1 rounded-full text-[9px] font-black uppercase ${r.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}">${r.status}</span></td><td class="px-8 py-5 text-right"><i class="fas fa-file-pdf text-slate-300"></i></td></tr>`).join('') || '<tr><td colspan="5" class="p-10 text-center text-slate-400 italic">No logs found.</td></tr>'}</tbody></table></div></div>`; }
+            $('main-content').innerHTML = html;
+        }
+
+        function handleApproval(id, isApprove) {
+            const idx = leaveRequests.findIndex(r => r.id === id);
+            if (idx === -1) return;
+            if (!isApprove) { leaveRequests[idx].status = 'REJECTED'; }
+            else {
+                if (currentUser.role === ROLES.HEAD) { leaveRequests[idx].status = 'HRD_APPROVAL'; }
+                else {
+                    leaveRequests[idx].status = 'APPROVED';
+                    const userRef = users.find(u => u.name === leaveRequests[idx].name);
+                    if (userRef) { userRef.pending--; userRef.used += leaveRequests[idx].duration; }
+                }
+            }
+            showToast(isApprove ? 'Request approved.' : 'Request rejected.');
+            loadApprovalList();
+        }
+
+        function showDetail(id) {
+            const r = leaveRequests.find(r => r.id === id);
+            if (!r) return;
+            $('detail-id').innerText = '#' + r.id;
+            $('modal-body').innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 text-sm"><div class="space-y-1"><p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Employee Name</p><p class="font-bold text-slate-800">${r.name}</p></div><div class="space-y-1"><p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Current Status</p><p class="font-black text-blue-600 uppercase tracking-tighter">${r.status.replace(/_/g, ' ')}</p></div><div class="space-y-1"><p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Division</p><p class="font-bold text-slate-800">${r.division || '-'}</p></div><div class="space-y-1"><p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Position</p><p class="font-bold text-slate-800">${r.position || '-'}</p></div><div class="space-y-1"><p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Target Head Dept</p><p class="font-bold text-slate-800">${r.targetHeadPosition || '-'}</p></div><div class="space-y-1"><p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Leave Type</p><p class="font-bold text-slate-800">${r.type}</p></div><div class="space-y-1"><p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Duration</p><p class="font-bold text-slate-800">${r.duration} Days</p></div><div class="space-y-1"><p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Start Date</p><p class="font-bold text-slate-800">${formatDate(r.start)}</p></div><div class="space-y-1"><p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">End Date</p><p class="font-bold text-slate-800">${formatDate(r.end)}</p></div><div class="col-span-1 md:col-span-2 space-y-1"><p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Handover Delegation</p><p class="font-bold text-slate-800">${r.handover}</p></div><div class="col-span-1 md:col-span-2 space-y-1 pt-4"><p class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Reason & Purpose</p><div class="p-5 bg-slate-50 rounded-2xl italic text-slate-600 leading-relaxed border border-slate-100">"${r.reason}"</div></div></div>`;
+            $('modal-detail').classList.remove('hidden'); $('modal-detail').classList.add('flex');
+        }
+        function closeDetail() { $('modal-detail').classList.add('hidden'); $('modal-detail').classList.remove('flex'); }
+
+        // --- INITIALIZATION ---
+        window.onload = () => { 
+            $('current-date').innerText = formatDate(new Date());
+            if(users[0]) { users[0].division = "Operation"; users[0].position = "Chief Pilot Fixed Wing"; }
+        };
+    </script>
+</body>
+</html>
