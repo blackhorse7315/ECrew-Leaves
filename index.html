@@ -48,7 +48,6 @@
             backdrop-filter: blur(4px);
         }
 
-        /* Mobile Menu Transition */
         #mobile-nav-overlay {
             transition: opacity 0.3s ease, visibility 0.3s ease;
         }
@@ -60,18 +59,30 @@
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
             #print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                padding: 40px;
-                background: white;
+                position: absolute; left: 0; top: 0; width: 100%; padding: 40px; background: white;
             }
             .no-print { display: none !important; }
         }
+
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="text-slate-800">
+
+    <!-- OVERLAY LOADING -->
+    <div id="global-loader" class="fixed inset-0 z-[300] bg-white flex flex-col items-center justify-center gap-4">
+        <div class="loader w-12 h-12 border-4"></div>
+        <p class="font-black text-blue-900 uppercase tracking-widest text-xs">Menghubungkan ke Database...</p>
+    </div>
 
     <!-- LOGIN PAGE -->
     <div id="login-page" class="fixed inset-0 z-[100] aviation-gradient flex items-center justify-center p-4">
@@ -86,13 +97,11 @@
                         <p class="text-xl font-black leading-tight text-blue-900">Prima Aviation</p>
                     </div>
                 </div>
-
                 <div class="space-y-6">
                     <div class="text-center">
                         <h2 class="text-xl font-bold text-slate-800">Transwisata ECrew</h2>
                         <p class="text-xs text-slate-500 mt-1">Portal Manajemen Cuti Internal</p>
                     </div>
-
                     <form id="login-form" class="space-y-4">
                         <div class="space-y-1">
                             <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Username</label>
@@ -110,7 +119,7 @@
                                     class="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-medium text-sm">
                             </div>
                         </div>
-                        <button type="submit" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-xl shadow-blue-200 transition-all active:scale-95">
+                        <button type="submit" id="login-btn" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-xl shadow-blue-200 transition-all active:scale-95">
                             Sign In
                         </button>
                     </form>
@@ -121,7 +130,7 @@
 
     <!-- MAIN APP WRAPPER -->
     <div id="app-wrapper" class="hidden flex h-screen overflow-hidden">
-        <!-- Sidebar (Desktop) -->
+        <!-- Sidebar -->
         <aside class="w-64 aviation-gradient text-white hidden md:flex flex-col shadow-2xl">
             <div class="p-6">
                 <div class="flex items-center gap-3 mb-8">
@@ -149,7 +158,7 @@
             </div>
         </aside>
 
-        <!-- Mobile Navigation Overlay -->
+        <!-- Mobile Navigation -->
         <div id="mobile-nav-overlay" class="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm invisible opacity-0 md:hidden" onclick="toggleMobileMenu()">
             <div id="mobile-nav-content" class="w-72 h-full aviation-gradient shadow-2xl flex flex-col -translate-x-full" onclick="event.stopPropagation()">
                 <div class="p-6 border-b border-white/10 flex justify-between items-center">
@@ -157,185 +166,103 @@
                         <img src="https://lh3.googleusercontent.com/d/14XvFbNETCuybdeUeH6BPrPaC33uBijMc" alt="Logo" class="h-8 bg-white p-1 rounded" />
                         <span class="font-bold text-white uppercase text-xs tracking-widest">Menu</span>
                     </div>
-                    <button onclick="toggleMobileMenu()" class="text-white/70 hover:text-white">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
+                    <button onclick="toggleMobileMenu()" class="text-white/70 hover:text-white"><i class="fas fa-times text-xl"></i></button>
                 </div>
-                <div class="p-4 flex-1 overflow-y-auto" id="mobile-dynamic-nav">
-                    <!-- Nav items injected here -->
-                </div>
-                <div class="p-6 bg-blue-900/40 border-t border-white/10">
-                    <div class="flex items-center gap-3 mb-6">
-                        <img id="user-avatar-mobile" src="" class="w-12 h-12 rounded-full border-2 border-blue-400 shadow-lg" alt="User">
-                        <div class="overflow-hidden">
-                            <p id="user-name-mobile" class="text-white font-bold truncate">Nama User</p>
-                            <p id="user-role-mobile" class="text-blue-300 text-[10px] uppercase font-black">Role</p>
-                        </div>
-                    </div>
-                    <button onclick="logout()" class="w-full py-3 bg-red-500/20 text-red-200 rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                </div>
+                <div class="p-4 flex-1 overflow-y-auto" id="mobile-dynamic-nav"></div>
             </div>
         </div>
 
         <main class="flex-1 flex flex-col h-full overflow-y-auto bg-slate-50">
             <header class="bg-white border-b border-slate-200 px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-10">
-                <div class="flex items-center gap-3 md:gap-4">
-                    <!-- Mobile Hamburger -->
-                    <button onclick="toggleMobileMenu()" class="md:hidden w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-all">
-                        <i class="fas fa-bars"></i>
-                    </button>
-
-                    <button id="global-back-btn" onclick="switchTab('dashboard')" class="hidden w-10 h-10 rounded-full hover:bg-slate-100 items-center justify-center text-slate-400 transition-all">
-                        <i class="fas fa-arrow-left"></i>
-                    </button>
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleMobileMenu()" class="md:hidden w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-all"><i class="fas fa-bars"></i></button>
+                    <button id="global-back-btn" onclick="switchTab('dashboard')" class="hidden w-10 h-10 rounded-full hover:bg-slate-100 items-center justify-center text-slate-400 transition-all"><i class="fas fa-arrow-left"></i></button>
                     <div>
                         <h2 id="page-title" class="text-lg md:text-xl font-black text-slate-800 uppercase tracking-tight">Dashboard</h2>
                         <p id="page-subtitle" class="text-[10px] md:text-xs text-slate-500 font-medium">Panel Manajemen Cuti</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-2 sm:gap-4">
+                <div class="flex items-center gap-2">
                     <div id="current-date" class="hidden lg:block text-xs font-bold text-slate-400 bg-slate-50 px-4 py-2 rounded-full border border-slate-100"></div>
-                    <div class="h-8 w-px bg-slate-100 mx-1 hidden sm:block"></div>
-                    <div class="md:hidden">
-                         <img id="header-user-avatar" src="" class="w-8 h-8 rounded-full border border-blue-100" />
-                    </div>
+                    <img id="header-user-avatar" src="" class="w-8 h-8 rounded-full border border-blue-100 md:hidden" />
                 </div>
             </header>
             <div id="main-content" class="p-4 md:p-8"></div>
         </main>
     </div>
 
-    <!-- MODAL: REQUEST DETAILS -->
+    <!-- MODALS -->
+    <!-- [MODAL NOTE] -->
+    <div id="modal-note" class="fixed inset-0 z-[200] modal-overlay hidden items-center justify-center p-4">
+        <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden animate-fade-in">
+            <div id="note-header" class="p-6 text-white aviation-gradient">
+                <h3 id="note-title" class="text-lg font-black uppercase tracking-tight">Konfirmasi</h3>
+            </div>
+            <div class="p-8 space-y-4">
+                <div class="space-y-1">
+                    <label id="note-label" class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Catatan</label>
+                    <textarea id="note-text" rows="4" placeholder="..." class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 outline-none font-medium text-sm transition-all"></textarea>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="closeNoteModal()" class="flex-1 py-3 bg-slate-100 text-slate-500 rounded-xl font-bold text-xs uppercase">Batal</button>
+                    <button onclick="confirmApprovalWithNote()" id="note-submit-btn" class="flex-[2] py-3 bg-blue-600 text-white rounded-xl font-black text-xs uppercase shadow-lg">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- [MODAL DETAIL] -->
     <div id="modal-detail" class="fixed inset-0 z-[150] modal-overlay hidden items-center justify-center p-4">
         <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
             <div id="print-area" class="p-6 md:p-10 overflow-y-auto no-scrollbar flex-1">
                 <div class="flex justify-between items-start mb-8 pb-6 border-b border-slate-100">
                     <div class="flex items-center gap-3">
                         <img src="https://lh3.googleusercontent.com/d/14XvFbNETCuybdeUeH6BPrPaC33uBijMc" alt="Logo" class="h-10 md:h-12 object-contain" />
-                        <div>
-                            <h4 class="text-[10px] font-black uppercase text-blue-900 tracking-widest">Transwisata</h4>
-                            <p class="text-xs md:text-sm font-black text-blue-900">Prima Aviation</p>
-                        </div>
+                        <div><h4 class="text-[10px] font-black uppercase text-blue-900 tracking-widest">Transwisata</h4><p class="text-xs md:text-sm font-black text-blue-900">Prima Aviation</p></div>
                     </div>
-                    <div class="text-right">
-                        <h3 class="text-sm md:text-lg font-black text-slate-800 uppercase tracking-tight">Formulir Cuti</h3>
-                        <p id="detail-id" class="text-[9px] md:text-xs font-bold text-slate-400 tracking-widest mt-1">#TWA-000</p>
-                    </div>
+                    <div class="text-right"><h3 class="text-sm md:text-lg font-black text-slate-800 uppercase tracking-tight">Formulir Cuti</h3><p id="detail-id" class="text-[9px] md:text-xs font-bold text-slate-400 tracking-widest mt-1">#TWA-000</p></div>
                 </div>
                 <div id="modal-body" class="space-y-6"></div>
-                <div class="mt-12 grid grid-cols-2 gap-8 text-center border-t border-slate-100 pt-8">
-                    <div class="space-y-12">
-                        <p class="text-[9px] md:text-[10px] font-black uppercase text-slate-400 tracking-widest">Head of Dept</p>
-                        <div class="h-px bg-slate-200 w-24 md:w-32 mx-auto"></div>
-                    </div>
-                    <div class="space-y-12">
-                        <p class="text-[9px] md:text-[10px] font-black uppercase text-slate-400 tracking-widest">HR Dept</p>
-                        <div class="h-px bg-slate-200 w-24 md:w-32 mx-auto"></div>
-                    </div>
-                </div>
             </div>
             <div class="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 no-print shrink-0">
                 <button onclick="closeDetail()" class="flex-1 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-600 hover:bg-slate-100 transition-all text-xs">Kembali</button>
-                <button onclick="window.print()" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 shadow-lg transition-all flex items-center justify-center gap-2 text-xs">
-                    <i class="fas fa-print"></i> Cetak PDF
-                </button>
+                <button onclick="window.print()" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 shadow-lg transition-all flex items-center justify-center gap-2 text-xs"><i class="fas fa-print"></i> Cetak PDF</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: APPROVAL NOTE -->
-    <div id="modal-note" class="fixed inset-0 z-[200] modal-overlay hidden items-center justify-center p-4">
-        <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden animate-fade-in">
-            <div id="note-header" class="p-6 text-white aviation-gradient">
-                <h3 id="note-title" class="text-lg font-black uppercase tracking-tight">Konfirmasi Persetujuan</h3>
-            </div>
-            <div class="p-8 space-y-4">
-                <div class="space-y-1">
-                    <label id="note-label" class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Catatan / Alasan</label>
-                    <textarea id="note-text" rows="4" placeholder="Tulis catatan di sini..." 
-                        class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 outline-none focus:ring-4 focus:ring-blue-100 font-medium text-sm transition-all"></textarea>
-                </div>
-                <div class="flex gap-3">
-                    <button onclick="closeNoteModal()" class="flex-1 py-3 bg-slate-100 text-slate-500 rounded-xl font-bold text-xs uppercase">Batal</button>
-                    <button onclick="confirmApprovalWithNote()" id="note-submit-btn" class="flex-[2] py-3 bg-blue-600 text-white rounded-xl font-black text-xs uppercase shadow-lg shadow-blue-100">Simpan & Beritahu</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: NEW LEAVE REQUEST -->
+    <!-- [MODAL REQUEST] -->
     <div id="modal-request" class="fixed inset-0 z-[150] modal-overlay hidden items-center justify-center p-4">
         <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
             <div class="aviation-gradient p-6 md:p-8 text-white relative shrink-0">
                 <div class="flex justify-between items-center">
-                    <div class="flex items-center gap-3">
-                        <button onclick="closeRequestModal()" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center md:hidden"><i class="fas fa-arrow-left text-xs"></i></button>
-                        <h3 class="text-lg md:text-2xl font-black">Pengajuan Cuti</h3>
-                    </div>
+                    <h3 class="text-lg md:text-2xl font-black">Pengajuan Cuti</h3>
                     <button onclick="closeRequestModal()" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"><i class="fas fa-times"></i></button>
                 </div>
             </div>
             <form id="leave-request-form" class="p-6 md:p-10 space-y-6 bg-white overflow-y-auto no-scrollbar flex-1">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Divisi</label>
-                        <input type="text" id="r-division" readonly class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-100 font-semibold text-sm">
-                    </div>
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Jabatan</label>
-                        <input type="text" id="r-position" readonly class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-100 font-semibold text-sm">
-                    </div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Divisi</label><input type="text" id="r-division" readonly class="w-full px-4 py-3 rounded-2xl border bg-slate-100 font-semibold text-sm"></div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Jabatan</label><input type="text" id="r-position" readonly class="w-full px-4 py-3 rounded-2xl border bg-slate-100 font-semibold text-sm"></div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ditujukan ke Head Dept <span class="text-red-500">*</span></label>
-                        <select id="r-target-head" required class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 outline-none font-semibold text-sm">
-                        </select>
-                    </div>
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tipe Cuti</label>
-                        <select id="r-type" required class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 outline-none font-semibold text-sm" onchange="onLeaveTypeChange()">
-                            <option value="">Pilih Tipe Cuti</option>
-                            <option value="Annual Leave">Annual Leave</option>
-                            <option value="Special Leave">Special Leave</option>
-                            <option value="Marriage Leave">Marriage Leave</option>
-                            <option value="Child's Marriage Leave">Child's Marriage Leave</option>
-                            <option value="Paternity/Miscarriage Leave">Paternity/Miscarriage Leave</option>
-                            <option value="Child's Circumcision Leave">Child's Circumcision Leave</option>
-                            <option value="Child's Baptism Leave">Child's Baptism Leave</option>
-                            <option value="Immediate Family Death Leave">Immediate Family Death Leave</option>
-                            <option value="Other Household Death Leave">Other Household Death Leave</option>
-                        </select>
-                    </div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ditujukan ke Head Dept <span class="text-red-500">*</span></label><select id="r-target-head" required class="w-full px-4 py-3 rounded-2xl border bg-slate-50 font-semibold text-sm"></select></div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tipe Cuti</label><select id="r-type" required class="w-full px-4 py-3 rounded-2xl border bg-slate-50 font-semibold text-sm" onchange="onLeaveTypeChange()">
+                        <option value="">Pilih Tipe Cuti</option>
+                        <option value="Annual Leave">Annual Leave</option>
+                        <option value="Special Leave">Special Leave</option>
+                    </select></div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Delegasi Tugas Ke</label>
-                        <select id="r-handover" required class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 outline-none font-semibold text-sm">
-                            <option value="">Pilih Rekan Kerja</option>
-                        </select>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 md:gap-4">
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mulai</label>
-                            <input type="date" id="r-start" required class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 outline-none font-semibold text-sm">
-                        </div>
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Selesai</label>
-                            <input type="date" id="r-end" required class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 outline-none font-semibold text-sm">
-                        </div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Delegasi Tugas Ke</label><select id="r-handover" required class="w-full px-4 py-3 rounded-2xl border bg-slate-50 font-semibold text-sm"></select></div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mulai</label><input type="date" id="r-start" required class="w-full px-4 py-3 rounded-2xl border bg-slate-50 font-semibold text-sm"></div>
+                        <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Selesai</label><input type="date" id="r-end" required class="w-full px-4 py-3 rounded-2xl border bg-slate-50 font-semibold text-sm"></div>
                     </div>
                 </div>
-                <div class="bg-blue-50 p-4 rounded-2xl text-center border border-blue-100">
-                    <p id="r-duration-view" class="text-xl font-black text-blue-700">0 Hari</p>
-                </div>
-                <div class="space-y-1">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Alasan</label>
-                    <textarea id="r-reason" rows="3" required class="w-full px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50 outline-none font-medium text-sm"></textarea>
-                </div>
-                <button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-xl hover:bg-blue-700 transition-all text-sm uppercase">Kirim Pengajuan</button>
+                <div class="bg-blue-50 p-4 rounded-2xl text-center border border-blue-100"><p id="r-duration-view" class="text-xl font-black text-blue-700">0 Hari</p></div>
+                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Alasan</label><textarea id="r-reason" rows="3" required class="w-full px-4 py-3 rounded-2xl border bg-slate-50 outline-none font-medium text-sm"></textarea></div>
+                <button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-xl hover:bg-blue-700 transition-all uppercase">Kirim Pengajuan</button>
             </form>
         </div>
     </div>
@@ -343,165 +270,217 @@
     <!-- TOAST -->
     <div id="toast" class="fixed bottom-8 right-8 z-[250] hidden animate-fade-in">
         <div class="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/10">
-            <div id="toast-icon" class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm">
-                <i class="fas fa-check"></i>
-            </div>
+            <div id="toast-icon" class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm"><i class="fas fa-check"></i></div>
             <p id="toast-msg" class="text-sm font-bold">Berhasil</p>
         </div>
     </div>
 
     <script>
-        // PWA SW
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                const blob = new Blob([`self.addEventListener('install', (e) => {self.skipWaiting();}); self.addEventListener('activate', (e) => {e.waitUntil(clients.claim());}); self.addEventListener('fetch', (e) => {e.respondWith(fetch(e.request));});`], { type: 'application/javascript' });
-                const workerUrl = URL.createObjectURL(blob);
-                navigator.serviceWorker.register(workerUrl).catch(err => console.log("SW Fail", err));
-            });
-        }
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzb2c4FYBoQa2sJlZ8kZGqbXT4PQER22Py6qy23LcEISXFaLRiXy0uMEU2laFM4PJ_5DQ/exec";
 
         const DIVISIONS = ["Operation", "Maintenance", "Safety", "Staf"];
         const POSITIONS = ["Director", "Safety, Quality & Security Manager", "General Manager", "Operation Manager", "Maintenance Manager", "Chief Pilot Fixed Wing", "Chief Pilot Rotary Wing", "Chief Flight Support", "Chief Engineer", "Chief Inspector", "Chief Finance, Accounting & Tax", "Human Resource Development", "Line Pilot", "Engineer", "Cabin Service", "Staf", "Flight Support", "Ground Support", "Finance", "Logistic", "Aviation Security", "Kurir", "Driver"];
         const HEAD_POSITIONS = ["Operation Manager", "Maintenance Manager", "Chief Pilot Rotary Wing", "Chief Pilot Fixed Wing", "Chief Flight Support", "Chief Engineer", "HRD"];
-        const POLICY_DURATIONS = {"Marriage Leave": 3, "Child's Marriage Leave": 2, "Paternity/Miscarriage Leave": 2, "Child's Circumcision Leave": 2, "Child's Baptism Leave": 2, "Immediate Family Death Leave": 2, "Other Household Death Leave": 1};
 
-        // GLOBAL STATES
-        let users = [
-            { id: 'USR-001', name: 'Arya Wijaya', division: 'Operation', position: 'Chief Pilot Fixed Wing', email: 'arya@transwisata.com', username: 'arya@transwisata.com', password: 'arya@transwisata.com', phone: '628123456789', annualQuota: 12, specialQuota: 40, used: 4, pending: 0 }
-        ];
-        let heads = [
-            { id: 'HEAD-001', name: 'Capt. Bambang', division: 'Operation', position: 'Operation Manager', email: 'bambang@transwisata.com', username: 'bambang@transwisata.com', password: 'bambang@transwisata.com', phone: '628111222333' }
-        ];
-        let hrdProfile = {
-            name: 'HR Admin',
-            division: 'Human Resource',
-            position: 'HR Manager',
-            email: 'hrd@transwisata.com',
-            phone: '6281234567890'
-        };
+        let users = [];
+        let heads = [];
         let leaveRequests = [];
+        let hrdProfile = { name: 'Admin TWA', division: 'HR', position: 'Manager', email: 'hr@transwisata.com', phone: '628123456789' };
 
         const ROLES = { STAFF: 'staff', HEAD: 'head', HRD: 'hrd' };
         let currentUser = null;
         let editingUserId = null;
         let editingHeadId = null;
-        let pendingNoteId = null;
-        let pendingNoteIsApprove = null;
+        let pendingApprovalId = null;
+        let isApproveAction = true;
         let isMobileMenuOpen = false;
 
         const $ = (id) => document.getElementById(id);
 
-        function formatDate(dateStr) {
-            if (!dateStr) return "-";
-            const date = new Date(dateStr);
-            return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-        }
-
-        function showToast(msg, type = 'success') {
-            $('toast-msg').innerText = msg;
-            $('toast-icon').className = `w-8 h-8 rounded-full flex items-center justify-center text-sm ${type === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`;
-            $('toast-icon').innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : 'times'}"></i>`;
-            $('toast').classList.remove('hidden');
-            setTimeout(() => $('toast').classList.add('hidden'), 3000);
-        }
-
-        function triggerWhatsApp(phone, message) {
-            if (!phone) return;
-            const cleanedPhone = phone.replace(/[^0-9]/g, '');
-            const encodedMsg = encodeURIComponent(message);
-            const waUrl = `https://wa.me/${cleanedPhone}?text=${encodedMsg}`;
-            window.open(waUrl, '_blank');
-        }
-
-        function toggleMobileMenu() {
-            isMobileMenuOpen = !isMobileMenuOpen;
-            const overlay = $('mobile-nav-overlay');
-            const content = $('mobile-nav-content');
-            
-            if (isMobileMenuOpen) {
-                overlay.classList.remove('invisible', 'opacity-0');
-                overlay.classList.add('visible', 'opacity-100');
-                content.classList.remove('-translate-x-full');
-            } else {
-                overlay.classList.remove('visible', 'opacity-100');
-                overlay.classList.add('invisible', 'opacity-0');
-                content.classList.add('-translate-x-full');
+        // --- DATABASE SYNC ---
+        async function fetchFromSheet() {
+            try {
+                const res = await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'fetchAll' })
+                });
+                if (!res.ok) throw new Error("Fetch failed");
+                const result = await res.json();
+                if (result.status === 'success') {
+                    users = result.data.users || [];
+                    heads = result.data.heads || [];
+                    leaveRequests = result.data.requests || [];
+                    if(result.data.profile) result.data.profile.forEach(p => hrdProfile[p.Key] = p.Value);
+                    return true;
+                }
+            } catch (err) { 
+                console.error("Fetch error:", err);
+                // Mock data fallback
+                users = [{ID: 'USR-001', Name: 'Muhamad Ramdani Masri', Division: 'Operation', Position: 'Chief Pilot Rotary Wing', Username: 'ramdan', Password: '28', AnnualQuota: 12, SpecialQuota: 40, Phone: '6281215917554'}];
+                heads = [{ID: 'HEAD-001', Name: 'Capt. Bambang', Division: 'Operation', Position: 'Operation Manager', Username: 'bambang', Password: '123', Phone: '628111222333'}];
             }
+            return false;
+        }
+
+        async function callGAS(action, data = {}) {
+            try {
+                await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, data })
+                });
+                return { status: 'success' };
+            } catch (err) { return { status: 'error' }; }
         }
 
         // --- BULK PARSE LOGIC ---
-        function handleBulkParse() {
-            const bulkText = $('e-bulk-input').value.trim();
-            if (!bulkText) return;
-            const lines = bulkText.split('\n');
-            let successCount = 0;
-            lines.forEach(line => {
+        async function handleBulkParse() {
+            const text = $('e-bulk-input').value.trim();
+            if (!text) return;
+            const lines = text.split('\n');
+            let count = 0;
+            for (let line of lines) {
                 const parts = line.split('|').map(p => p.trim());
-                if (parts.length >= 7) { 
-                    const newUser = {
-                        id: 'USR-' + Math.floor(1000 + Math.random() * 9000),
-                        name: parts[0], division: parts[1], position: parts[2], email: parts[3], phone: parts[4], 
-                        annualQuota: parseInt(parts[5]) || 12, specialQuota: parseInt(parts[6]) || 40,
-                        username: parts[7] || parts[3], password: parts[8] || 'TWA-Pass', used: 0, pending: 0
-                    };
-                    users.push(newUser);
-                    successCount++;
-                }
-            });
-            if (successCount > 0) { showToast(`${successCount} Karyawan terdaftar.`); $('e-bulk-input').value = ''; loadEmployeeManager(); }
-        }
-
-        function handleHeadBulkParse() {
-            const bulkText = $('h-bulk-input').value.trim();
-            if (!bulkText) return;
-            const lines = bulkText.split('\n');
-            let successCount = 0;
-            lines.forEach(line => {
-                const parts = line.split('|').map(p => p.trim());
-                if (parts.length >= 6) {
-                    const newHead = {
-                        id: 'HEAD-' + Math.floor(1000 + Math.random() * 9000),
+                if (parts.length >= 7) {
+                    const payload = {
+                        id: 'USR-' + Math.floor(1000 + Math.random()*9000),
                         name: parts[0], division: parts[1], position: parts[2], email: parts[3], phone: parts[4],
-                        username: parts[5] || parts[3], password: parts[6] || 'TWA-HeadPass'
+                        annualquota: parseInt(parts[5]) || 12, specialquota: parseInt(parts[6]) || 40,
+                        username: parts[7] || parts[3], password: parts[8] || 'TWA-Pass'
                     };
-                    heads.push(newHead);
-                    successCount++;
+                    await callGAS('saveUser', payload);
+                    count++;
                 }
-            });
-            if (successCount > 0) { showToast(`${successCount} Head Dept terdaftar.`); $('h-bulk-input').value = ''; loadHeadManager(); }
+            }
+            showToast(`${count} Karyawan diproses`);
+            $('e-bulk-input').value = '';
+            setTimeout(async () => { await fetchFromSheet(); loadEmployeeManagerUI(); }, 1500);
         }
 
-        // --- AUTH ---
+        async function handleHeadBulkParse() {
+            const text = $('h-bulk-input').value.trim();
+            if (!text) return;
+            const lines = text.split('\n');
+            let count = 0;
+            for (let line of lines) {
+                const parts = line.split('|').map(p => p.trim());
+                if (parts.length >= 7) {
+                    let rawPhone = parts[4].replace(/[^0-9]/g, '');
+                    let phone = rawPhone.startsWith('0') ? '62' + rawPhone.substring(1) : rawPhone;
+                    const payload = {
+                        id: 'HEAD-' + Math.floor(1000 + Math.random()*9000),
+                        name: parts[0], division: parts[1], position: parts[2], email: parts[3], phone: phone,
+                        username: parts[5], password: parts[6]
+                    };
+                    await callGAS('saveHead', payload);
+                    count++;
+                }
+            }
+            showToast(`${count} Head Dept diproses`);
+            $('h-bulk-input').value = '';
+            setTimeout(async () => { await fetchFromSheet(); loadHeadManagerUI(); }, 1500);
+        }
+
+        // --- UI MANAGERS ---
+        function loadEmployeeManagerUI() {
+            $('main-content').innerHTML = `
+                <div class="animate-fade-in space-y-8">
+                    <!-- BULK BOX -->
+                    <div class="glass-card p-6 md:p-8 rounded-[2.5rem] shadow-xl border-2 border-blue-100 bg-blue-50/30">
+                         <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fas fa-magic"></i></div>
+                            <div>
+                                <h4 class="text-sm font-black text-blue-900 uppercase">Registrasi Bulk Karyawan</h4>
+                                <p class="text-[10px] text-blue-500 font-medium">Format: Nama | Divisi | Jabatan | Email | WA | Annual | Special | User | Pass</p>
+                            </div>
+                        </div>
+                        <textarea id="e-bulk-input" rows="4" placeholder="Ramdani | Operation | Line Pilot | ramdan@twa.com | 0812... | 12 | 40 | ramdan | pass" class="w-full px-5 py-4 rounded-3xl border border-blue-200 outline-none text-sm mb-4"></textarea>
+                        <button onclick="handleBulkParse()" class="w-full py-3 bg-blue-900 text-white rounded-2xl font-black uppercase text-xs shadow-xl">Proses Bulk Karyawan</button>
+                    </div>
+
+                    <div class="glass-card p-6 md:p-10 rounded-[2.5rem] shadow-xl">
+                        <h4 class="text-sm font-black text-blue-900 uppercase mb-8 pb-2 border-b">${editingUserId ? 'Edit Karyawan' : 'Daftar Karyawan Baru'}</h4>
+                        <form id="employee-form" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div class="lg:col-span-2"><label class="text-[10px] font-black uppercase text-slate-400">Nama Lengkap</label><input type="text" id="e-name" required class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
+                                <div><label class="text-[10px] font-black uppercase text-slate-400">Divisi</label><select id="e-division" required class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm">${DIVISIONS.map(d => `<option value="${d}">${d}</option>`).join('')}</select></div>
+                                <div><label class="text-[10px] font-black uppercase text-slate-400">Jabatan</label><select id="e-position" required class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm">${POSITIONS.map(p => `<option value="${p}">${p}</option>`).join('')}</select></div>
+                                <div class="lg:col-span-2"><label class="text-[10px] font-black uppercase text-slate-400">Email</label><input type="email" id="e-email" required class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
+                                <div class="lg:col-span-2"><label class="text-[10px] font-black uppercase text-slate-400">WhatsApp</label><input type="text" id="e-phone" required class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
+                                <div><label class="text-[10px] font-black uppercase text-slate-400">Annual</label><input type="number" id="e-annual" required class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
+                                <div><label class="text-[10px] font-black uppercase text-slate-400">Special</label><input type="number" id="e-special" required class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
+                                <div><label class="text-[10px] font-black uppercase text-slate-400">User</label><input type="text" id="e-username" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
+                                <div><label class="text-[10px] font-black uppercase text-slate-400">Pass</label><input type="text" id="e-password" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
+                            </div>
+                            <div class="flex gap-4"><button type="button" onclick="cancelEdit()" class="flex-1 py-3 bg-slate-100 rounded-xl font-bold uppercase text-[10px]">Reset</button><button type="submit" class="flex-[3] py-3 bg-blue-600 text-white rounded-xl font-black uppercase text-[10px] shadow-lg">Simpan</button></div>
+                        </form>
+                    </div>
+
+                    <div class="glass-card rounded-[2rem] overflow-x-auto shadow-sm"><table class="w-full text-left min-w-[600px]"><thead class="bg-slate-50 text-[10px] font-black uppercase border-b"><tr><th class="px-8 py-5">Karyawan</th><th class="px-6 py-5">Jabatan</th><th class="px-8 py-5 text-right">Aksi</th></tr></thead><tbody class="divide-y divide-slate-50">${users.map(u => `<tr><td class="px-8 py-5"><p class="text-xs md:text-sm font-black">${u.Name}</p><p class="text-[10px] text-slate-400">${u.Email}</p></td><td class="px-6 py-5"><p class="text-[10px] md:text-xs font-bold text-slate-600">${u.Division}</p><p class="text-[9px] text-slate-400">${u.Position}</p></td><td class="px-8 py-5 text-right"><button onclick="editUser('${u.ID}')" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all"><i class="fas fa-edit text-[10px]"></i></button></td></tr>`).join('')}</tbody></table></div>
+                </div>`;
+            $('employee-form').addEventListener('submit', handleEmployeeSubmit);
+        }
+
+        function loadHeadManagerUI() {
+            $('main-content').innerHTML = `
+                <div class="animate-fade-in space-y-8">
+                    <!-- BULK BOX -->
+                    <div class="glass-card p-6 md:p-8 rounded-[2.5rem] shadow-xl border-2 border-emerald-100 bg-emerald-50/30">
+                         <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fas fa-magic"></i></div>
+                            <div>
+                                <h4 class="text-sm font-black text-emerald-900 uppercase">Registrasi Bulk Head Dept</h4>
+                                <p class="text-[10px] text-emerald-600 font-medium">Format: Nama | Divisi | Jabatan | Email | WA | User | Pass</p>
+                            </div>
+                        </div>
+                        <textarea id="h-bulk-input" rows="4" placeholder="Capt Bambang | Operation | Operation Manager | bambang@twa.com | 0811... | bambang | 123" class="w-full px-5 py-4 rounded-3xl border border-emerald-200 outline-none text-sm mb-4"></textarea>
+                        <button onclick="handleHeadBulkParse()" class="w-full py-3 bg-emerald-700 text-white rounded-2xl font-black uppercase text-xs shadow-xl">Proses Bulk Head</button>
+                    </div>
+
+                    <div class="glass-card p-6 md:p-10 rounded-[2.5rem] shadow-xl">
+                        <h4 class="text-sm font-black text-blue-900 uppercase mb-8 pb-2 border-b">${editingHeadId ? 'Edit Head Dept' : 'Daftar Head Dept Baru'}</h4>
+                        <form id="head-form" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div><label class="text-[10px] font-black uppercase text-slate-400">Nama Lengkap</label><input type="text" id="h-name" required class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
+                                <div><label class="text-[10px] font-black uppercase text-slate-400">Divisi</label><select id="h-division" required class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm">${DIVISIONS.map(d => `<option value="${d}">${d}</option>`).join('')}</select></div>
+                                <div><label class="text-[10px] font-black uppercase text-slate-400">Jabatan</label><select id="h-position" required class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm">${HEAD_POSITIONS.map(p => `<option value="${p}">${p}</option>`).join('')}</select></div>
+                                <div><label class="text-[10px] font-black uppercase text-slate-400">Email</label><input type="email" id="h-email" required class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
+                                <div><label class="text-[10px] font-black uppercase text-slate-400">WhatsApp</label><input type="text" id="h-phone" required class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
+                                <div><label class="text-[10px] font-black uppercase text-slate-400">User</label><input type="text" id="h-username" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
+                                <div><label class="text-[10px] font-black uppercase text-slate-400">Pass</label><input type="text" id="h-password" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
+                            </div>
+                            <div class="flex gap-4 pt-4"><button type="button" onclick="cancelHeadEdit()" class="flex-1 py-3 bg-slate-100 rounded-xl font-bold uppercase text-[10px]">Batal</button><button type="submit" class="flex-[3] py-3 bg-blue-600 text-white rounded-xl font-black uppercase text-[10px] shadow-lg">Simpan</button></div>
+                        </form>
+                    </div>
+
+                    <div class="glass-card rounded-[2rem] overflow-x-auto shadow-sm"><table class="w-full text-left min-w-[500px]"><thead class="bg-slate-50 text-[10px] font-black uppercase border-b"><tr><th class="px-8 py-5">Info Head</th><th class="px-6 py-5">Jabatan</th><th class="px-8 py-5 text-right">Aksi</th></tr></thead><tbody class="divide-y divide-slate-50">${heads.map(h => `<tr><td class="px-8 py-5"><p class="text-xs font-black">${h.Name}</p><p class="text-[10px] text-slate-400">${h.Email}</p></td><td class="px-6 py-5"><p class="text-[10px] font-bold text-slate-600">${h.Division}</p><p class="text-[9px] text-slate-400">${h.Position}</p></td><td class="px-8 py-5 text-right"><button onclick="editHead('${h.ID}')" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 transition-all"><i class="fas fa-edit text-[10px]"></i></button></td></tr>`).join('')}</tbody></table></div>
+                </div>`;
+            $('head-form').addEventListener('submit', handleHeadSubmit);
+        }
+
+        // --- AUTH & OTHER LOGIC ---
         $('login-form').addEventListener('submit', (e) => {
             e.preventDefault();
             const u = $('username').value.trim();
             const p = $('password').value.trim();
             if (u === 'HRD' && p === 'TWA119-021') { loginAs(ROLES.HRD, 'HR Department'); return; }
-            const headMatch = heads.find(h => h.username === u && h.password === p);
-            if (headMatch) { loginAs(ROLES.HEAD, headMatch.name, headMatch); return; }
-            const userMatch = users.find(usr => usr.username === u && usr.password === p);
-            if (userMatch) loginAs(ROLES.STAFF, userMatch.name, userMatch);
-            else alert('Kredensial tidak valid!');
+            const hMatch = heads.find(h => h.Username === u && h.Password === p);
+            if (hMatch) { loginAs(ROLES.HEAD, hMatch.Name, hMatch); return; }
+            const uMatch = users.find(usr => usr.Username === u && usr.Password === p);
+            if (uMatch) loginAs(ROLES.STAFF, uMatch.Name, uMatch);
+            else showToast('Kredensial tidak valid!', 'error');
         });
 
         function loginAs(role, name, data = null) {
             currentUser = { role, name, data };
             $('login-page').classList.add('hidden');
             $('app-wrapper').classList.remove('hidden');
-            
-            const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e3a8a&color=fff&bold=true`;
-            
-            // Sync Desktop
+            const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e3a8a&color=fff&bold=true`;
             $('user-name').innerText = name;
-            $('user-role-label').innerText = role === ROLES.STAFF ? (data ? data.position : 'Staff') : (role === ROLES.HEAD ? data.position : role.toUpperCase());
-            $('user-avatar').src = avatarUrl;
-            
-            // Sync Mobile
-            $('user-name-mobile').innerText = name;
-            $('user-role-mobile').innerText = role === ROLES.STAFF ? (data ? data.position : 'Staff') : (role === ROLES.HEAD ? data.position : role.toUpperCase());
-            $('user-avatar-mobile').src = avatarUrl;
-            $('header-user-avatar').src = avatarUrl;
-
+            $('user-role-label').innerText = role === ROLES.STAFF ? (data ? data.Position : 'Staff') : (role === ROLES.HEAD ? data.Position : role.toUpperCase());
+            $('user-avatar').src = avatar;
+            $('header-user-avatar').src = avatar;
             setupNavigation();
             switchTab('dashboard');
         }
@@ -510,16 +489,13 @@
             if (isMobileMenuOpen) toggleMobileMenu();
             $('app-wrapper').classList.add('hidden');
             $('login-page').classList.remove('hidden');
-            $('login-form').reset();
             currentUser = null;
         }
 
         function setupNavigation() {
             const nav = $('dynamic-nav');
-            const mobileNav = $('mobile-dynamic-nav');
-            nav.innerHTML = '';
-            mobileNav.innerHTML = '';
-            
+            const mNav = $('mobile-dynamic-nav');
+            nav.innerHTML = mNav.innerHTML = '';
             const menu = [
                 { id: 'dashboard', label: 'Dashboard', icon: 'th-large', roles: [ROLES.STAFF, ROLES.HEAD, ROLES.HRD] },
                 { id: 'request_trigger', label: 'Ajukan Cuti', icon: 'plus-circle', roles: [ROLES.STAFF], action: openRequestModal },
@@ -529,16 +505,11 @@
                 { id: 'history', label: 'Riwayat Cuti', icon: 'history', roles: [ROLES.STAFF, ROLES.HEAD, ROLES.HRD] },
                 { id: 'hrd_profile', label: 'Profil HRD', icon: 'id-card', roles: [ROLES.HRD] }
             ];
-
-            menu.forEach(item => {
-                if (item.roles.includes(currentUser.role)) {
-                    const clickAction = item.action ? `openRequestModal()` : `switchTab('${item.id}')`;
-                    
-                    // Desktop Item
-                    nav.innerHTML += `<a href="#" onclick="${clickAction}" id="nav-${item.id}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-blue-100 hover:bg-blue-800 group"><i class="fas fa-${item.icon} w-5 text-center group-hover:scale-110"></i><span>${item.label}</span></a>`;
-                    
-                    // Mobile Item
-                    mobileNav.innerHTML += `<a href="#" onclick="${clickAction}" id="mobile-nav-${item.id}" class="mobile-nav-item flex items-center gap-4 px-5 py-4 rounded-2xl transition-all text-white/80 hover:bg-white/10 group mb-1"><i class="fas fa-${item.icon} text-lg w-6 text-center"></i><span class="font-semibold text-sm">${item.label}</span></a>`;
+            menu.forEach(it => {
+                if (it.roles.includes(currentUser.role)) {
+                    const click = it.action ? `openRequestModal()` : `switchTab('${it.id}')`;
+                    nav.innerHTML += `<a href="#" onclick="${click}" id="nav-${it.id}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-blue-100 hover:bg-blue-800 group"><i class="fas fa-${it.icon} w-5"></i><span>${it.label}</span></a>`;
+                    mNav.innerHTML += `<a href="#" onclick="${click}" id="mobile-nav-${it.id}" class="mobile-nav-item flex items-center gap-4 px-5 py-4 rounded-2xl transition-all text-white/80 hover:bg-white/10 mb-1"><i class="fas fa-${it.icon} w-6"></i><span class="font-semibold text-sm">${it.label}</span></a>`;
                 }
             });
         }
@@ -546,394 +517,211 @@
         function switchTab(tab) {
             if (tab === 'request_trigger') return;
             if (isMobileMenuOpen) toggleMobileMenu();
-
             $('global-back-btn').classList.toggle('hidden', tab === 'dashboard');
-            
-            // Sync Desktop Nav UI
-            document.querySelectorAll('.nav-item').forEach(el => {
-                el.classList.remove('bg-blue-700/50', 'border-l-4', 'border-blue-300', 'text-white');
-                el.classList.add('text-blue-100');
-            });
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('bg-blue-700/50', 'border-l-4', 'border-blue-300', 'text-white'));
             const active = $(`nav-${tab}`);
             if (active) active.classList.add('bg-blue-700/50', 'border-l-4', 'border-blue-300', 'text-white');
-
-            // Sync Mobile Nav UI
-            document.querySelectorAll('.mobile-nav-item').forEach(el => {
-                el.classList.remove('bg-white/10', 'text-white');
-                el.classList.add('text-white/80');
-            });
-            const mobileActive = $(`mobile-nav-${tab}`);
-            if (mobileActive) mobileActive.classList.add('bg-white/10', 'text-white');
-
             $('page-title').innerText = tab.charAt(0).toUpperCase() + tab.slice(1).replace('_', ' ');
-            
+
             if (tab === 'dashboard') loadDashboard();
             else if (tab === 'history') loadHistory();
             else if (tab === 'approval') loadApprovalList();
-            else if (tab === 'employees') loadEmployeeManager();
-            else if (tab === 'heads') loadHeadManager();
+            else if (tab === 'employees') loadEmployeeManagerUI();
+            else if (tab === 'heads') loadHeadManagerUI();
             else if (tab === 'hrd_profile') loadHRDProfile();
         }
 
-        // --- DASHBOARD BUILDERS ---
         function loadDashboard() {
-            if (currentUser.role === ROLES.STAFF) loadStaffDashboard();
-            else if (currentUser.role === ROLES.HEAD) loadHeadDashboard();
-            else loadAdminDashboard();
-        }
-
-        function loadStaffDashboard() {
-            const data = currentUser.data || users[0];
-            const myReq = leaveRequests.filter(r => r.name === currentUser.name);
-            const active = myReq.find(r => r.status.includes('REVIEW') || r.status.includes('APPROVAL'));
-            $('main-content').innerHTML = `<div class="space-y-6 md:space-y-8 animate-fade-in"><div class="flex justify-between items-center"><h3 class="font-bold text-slate-800 text-sm md:text-base">Ringkasan Cuti</h3><button onclick="openRequestModal()" class="px-4 md:px-6 py-2.5 md:py-3 bg-blue-600 text-white rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs uppercase hover:bg-blue-700 shadow-lg transition-all">Pengajuan Baru</button></div><div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"><div class="glass-card p-5 md:p-6 rounded-2xl md:rounded-3xl"><p class="text-[9px] md:text-[10px] font-black uppercase text-slate-400 mb-2">Tahunan</p><h3 class="text-xl md:text-3xl font-black text-blue-900">${data.annualQuota}</h3></div><div class="glass-card p-5 md:p-6 rounded-2xl md:rounded-3xl"><p class="text-[9px] md:text-[10px] font-black uppercase text-slate-400 mb-2">Spesial</p><h3 class="text-xl md:text-3xl font-black text-blue-900">${data.specialQuota}</h3></div><div class="glass-card p-5 md:p-6 rounded-2xl md:rounded-3xl"><p class="text-[9px] md:text-[10px] font-black uppercase text-slate-400 mb-2">Dipakai</p><h3 class="text-xl md:text-3xl font-black text-emerald-600">${data.used}</h3></div><div class="glass-card p-5 md:p-6 rounded-2xl md:rounded-3xl"><p class="text-[9px] md:text-[10px] font-black uppercase text-slate-400 mb-2">Menunggu</p><h3 class="text-xl md:text-3xl font-black text-amber-500">${data.pending}</h3></div></div><div class="glass-card p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-sm"><h4 class="text-[10px] md:text-xs font-black uppercase text-slate-400 tracking-widest mb-6">Status Saat Ini</h4>${active ? `<div class="p-4 md:p-6 bg-blue-50 border border-blue-100 rounded-2xl md:rounded-3xl flex justify-between items-center" onclick="showDetail('${active.id}')"><div class="flex items-center gap-4"><div><p class="text-xs md:text-sm font-black text-slate-800">${active.type}</p><p class="text-[10px] md:text-xs text-slate-500 font-medium">${formatDate(active.start)}</p></div></div><div class="flex items-center gap-3"><span class="px-2 md:px-3 py-1 bg-amber-100 text-amber-600 rounded-full text-[8px] md:text-[9px] font-black uppercase">${active.status.replace(/_/g, ' ')}</span></div></div>` : '<p class="text-xs md:text-sm text-slate-400 italic">Tidak ada pengajuan aktif.</p>'}</div></div>`;
-        }
-
-        function loadHeadDashboard() {
-            const pending = leaveRequests.filter(r => r.status === 'HEAD_DEPT_REVIEW' && r.targetHeadId === currentUser.data.id);
-            $('main-content').innerHTML = `<div class="space-y-6 md:space-y-8 animate-fade-in"><div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6"><div class="glass-card p-6 md:p-8 rounded-2xl md:rounded-[2rem] shadow-sm"><h3 class="text-xl md:text-2xl font-black text-blue-900">${currentUser.name}</h3><p class="text-[10px] md:text-xs text-blue-500 font-bold uppercase mt-1">${currentUser.data.position}</p></div><div class="glass-card p-6 md:p-8 rounded-2xl md:rounded-[2rem] bg-amber-50 border-amber-100 shadow-sm"><h3 class="text-2xl md:text-4xl font-black text-amber-700">${pending.length} Menunggu</h3><p class="text-[10px] md:text-xs uppercase font-bold text-amber-500 mt-1">Antrean Persetujuan</p></div></div></div>`;
-        }
-
-        function loadAdminDashboard() {
-            const pending = leaveRequests.filter(r => r.status === 'HRD_APPROVAL');
-            $('main-content').innerHTML = `<div class="space-y-6 md:space-y-8 animate-fade-in"><div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6"><div class="glass-card p-6 md:p-8 rounded-2xl md:rounded-[2rem] shadow-sm"><h3 class="text-xl md:text-2xl font-black text-blue-900">${currentUser.name}</h3><p class="text-[10px] md:text-xs text-blue-500 font-bold uppercase mt-1">HR Department</p></div><div class="glass-card p-6 md:p-8 rounded-2xl md:rounded-[2rem] bg-amber-50 border-amber-100 shadow-sm"><h3 class="text-2xl md:text-4xl font-black text-amber-700">${pending.length} Persetujuan</h3><p class="text-[10px] md:text-xs uppercase font-bold text-amber-500 mt-1">Belum Diproses</p></div></div></div>`;
-        }
-
-        // --- MANAGERS ---
-        function loadEmployeeManager() {
-            $('main-content').innerHTML = `
-                <div class="animate-fade-in space-y-8 md:space-y-10">
-                    <div class="flex justify-between items-center"><h3 class="text-lg md:text-xl font-black text-slate-800 uppercase tracking-tight">Karyawan</h3><button onclick="switchTab('dashboard')" class="px-3 md:px-4 py-2 bg-slate-100 rounded-xl text-[10px] md:text-xs font-bold hover:bg-slate-200">Kembali</button></div>
-                    
-                    <div class="glass-card p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-xl border-2 border-blue-100 bg-blue-50/30">
-                         <div class="flex items-center gap-3 mb-4">
-                            <div class="w-8 h-8 md:w-10 md:h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fas fa-magic text-xs md:text-base"></i></div>
-                            <div>
-                                <h4 class="text-xs md:text-sm font-black text-blue-900 uppercase">Registrasi Bulk</h4>
-                                <p class="text-[8px] md:text-[10px] text-blue-500 font-medium">Nama | Divisi | Jabatan | Email | WA | Annual | Special | User | Pass</p>
-                            </div>
-                        </div>
-                        <textarea id="e-bulk-input" rows="4" placeholder="Muhamad Ramdani Masri | Operation | Chief Pilot Rotary Wing | crunkbolcow@gmail.com | 081215917554 | 12 | 40 | user | pass" class="w-full px-4 md:px-5 py-3 md:py-4 rounded-xl md:rounded-3xl border border-blue-200 outline-none transition-all font-medium text-xs md:text-sm mb-4"></textarea>
-                        <button onclick="handleBulkParse()" class="w-full py-3 md:py-4 bg-blue-900 text-white rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs shadow-xl">Proses Data Bulk</button>
-                    </div>
-
-                    <div class="glass-card p-6 md:p-10 rounded-2xl md:rounded-[2.5rem] shadow-xl border border-white">
-                        <h4 class="text-xs md:text-sm font-black text-blue-900 uppercase tracking-widest mb-8 pb-2 border-b border-blue-50">${editingUserId ? 'Edit Karyawan' : 'Daftar Karyawan Baru'}</h4>
-                        <form id="employee-form" class="space-y-6 md:space-y-8">
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                                <div class="space-y-1 lg:col-span-2"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nama Lengkap</label><input type="text" id="e-name" required class="w-full px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm"></div>
-                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Divisi</label><select id="e-division" required class="w-full px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm">${DIVISIONS.map(d => `<option value="${d}">${d}</option>`).join('')}</select></div>
-                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Jabatan</label><select id="e-position" required class="w-full px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm">${POSITIONS.map(p => `<option value="${p}">${p}</option>`).join('')}</select></div>
-                                <div class="space-y-1 lg:col-span-2"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email</label><input type="email" id="e-email" required class="w-full px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm"></div>
-                                <div class="space-y-1 lg:col-span-2"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">WhatsApp</label><input type="text" id="e-phone" required class="w-full px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm"></div>
-                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tahunan</label><input type="number" id="e-annual" required class="w-full px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm"></div>
-                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Spesial</label><input type="number" id="e-special" required class="w-full px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm"></div>
-                                <div class="space-y-1 lg:col-span-2"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Username</label><input type="text" id="e-username" class="w-full px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm"></div>
-                                <div class="space-y-1 lg:col-span-2"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label><input type="text" id="e-password" class="w-full px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm transition-all"></div>
-                            </div>
-                            <div class="flex gap-4 pt-4"><button type="button" onclick="cancelEdit()" class="flex-1 py-3 md:py-4 bg-slate-100 text-slate-500 rounded-xl md:rounded-2xl font-bold uppercase text-[10px]">Reset</button><button type="submit" class="flex-[3] py-3 md:py-4 bg-blue-600 text-white rounded-xl md:rounded-2xl font-black uppercase shadow-xl hover:bg-blue-700 transition-all text-[10px]">${editingUserId ? 'Update Data' : 'Simpan Karyawan'}</button></div>
-                        </form>
-                    </div>
-
-                    <!-- DATA LIST -->
-                    <div class="glass-card rounded-2xl md:rounded-[2.5rem] border border-slate-100 overflow-x-auto shadow-sm">
-                        <table class="w-full text-left min-w-[600px]">
-                            <thead class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b">
-                                <tr><th class="px-6 md:px-8 py-5">Karyawan</th><th class="px-6 py-5">Jabatan</th><th class="px-6 py-5">Kuota</th><th class="px-6 md:px-8 py-5 text-right">Aksi</th></tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-50">
-                                ${users.map(u => `<tr><td class="px-6 md:px-8 py-5"><p class="text-xs md:text-sm font-black text-slate-800">${u.name}</p><p class="text-[9px] md:text-[10px] text-slate-400">${u.email}</p></td><td class="px-6 py-5"><p class="text-[10px] md:text-xs font-bold text-slate-600">${u.division}</p><p class="text-[9px] md:text-[10px] text-slate-400">${u.position}</p></td><td class="px-6 py-5"><div class="flex gap-1 md:gap-2"><span class="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[8px] md:text-[9px] font-black">${u.annualQuota}A</span><span class="px-2 py-0.5 bg-amber-50 text-amber-600 rounded text-[8px] md:text-[9px] font-black">${u.specialQuota}S</span></div></td><td class="px-6 md:px-8 py-5 text-right"><button onclick="editUser('${u.id}')" class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all"><i class="fas fa-edit text-[9px] md:text-[10px]"></i></button><button onclick="deleteUser('${u.id}')" class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all ml-1 md:ml-2"><i class="fas fa-trash text-[9px] md:text-[10px]"></i></button></td></tr>`).join('')}
-                            </tbody>
-                        </table>
+            const data = currentUser.data || { AnnualQuota:0, SpecialQuota:0, Used:0, Pending:0 };
+            if (currentUser.role === ROLES.STAFF) {
+                const myReqs = leaveRequests.filter(r => r.Name === currentUser.name);
+                const active = myReqs.find(r => r.Status.includes('REVIEW') || r.Status.includes('APPROVAL'));
+                $('main-content').innerHTML = `
+                <div class="space-y-8 animate-fade-in">
+                    <div class="flex justify-between items-center"><h3 class="font-bold text-slate-800">Ringkasan Cuti</h3><button onclick="openRequestModal()" class="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase shadow-lg">Pengajuan Baru</button></div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                        <div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Tahunan</p><h3 class="text-3xl font-black text-blue-900">${data.AnnualQuota || 0}</h3></div>
+                        <div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Spesial</p><h3 class="text-3xl font-black text-blue-900">${data.SpecialQuota || 0}</h3></div>
+                        <div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Dipakai</p><h3 class="text-3xl font-black text-emerald-600">${data.Used || 0}</h3></div>
+                        <div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Menunggu</p><h3 class="text-3xl font-black text-amber-500">${data.Pending || 0}</h3></div>
                     </div>
                 </div>`;
-            $('employee-form').addEventListener('submit', handleEmployeeSubmit);
+            } else {
+                const pending = leaveRequests.filter(r => (currentUser.role === ROLES.HEAD && r.Status === 'HEAD_DEPT_REVIEW' && r.TargetHeadId === currentUser.data.ID) || (currentUser.role === ROLES.HRD && r.Status === 'HRD_APPROVAL'));
+                $('main-content').innerHTML = `<div class="glass-card p-8 rounded-[2rem] bg-amber-50 border-amber-100 shadow-sm"><h3 class="text-4xl font-black text-amber-700">${pending.length} Menunggu</h3><p class="text-xs uppercase font-bold text-amber-500 mt-1">Antrean Persetujuan Baru</p></div>`;
+            }
         }
 
-        function loadHeadManager() {
-            $('main-content').innerHTML = `
-                <div class="animate-fade-in space-y-8 md:space-y-10">
-                    <div class="flex justify-between items-center"><h3 class="text-lg md:text-xl font-black text-slate-800 uppercase tracking-tight">Head Dept</h3><button onclick="switchTab('dashboard')" class="px-3 md:px-4 py-2 bg-slate-100 rounded-xl text-[10px] md:text-xs font-bold hover:bg-slate-200">Kembali</button></div>
-                    
-                    <div class="glass-card p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-xl border-2 border-emerald-100 bg-emerald-50/30">
-                        <textarea id="h-bulk-input" rows="4" placeholder="Muhamad Ramdani Masri | Operation | Chief Pilot Rotary Wing | crunkbolcow@gmail.com | 081215917554 | user | pass" class="w-full px-4 md:px-5 py-3 md:py-4 rounded-xl md:rounded-3xl border border-emerald-200 outline-none transition-all font-medium text-xs md:text-sm mb-4"></textarea>
-                        <button onclick="handleHeadBulkParse()" class="w-full py-3 md:py-4 bg-emerald-700 text-white rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs shadow-xl">Proses Head Dept</button>
-                    </div>
-
-                    <div class="glass-card p-6 md:p-10 rounded-2xl md:rounded-[2.5rem] shadow-xl border border-white">
-                        <h4 class="text-xs md:text-sm font-black text-blue-900 uppercase tracking-widest mb-8 pb-2 border-b border-blue-50">${editingHeadId ? 'Edit Head' : 'Daftar Head Baru'}</h4>
-                        <form id="head-form" class="space-y-6 md:space-y-8">
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nama Lengkap</label><input type="text" id="h-name" required class="w-full px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm"></div>
-                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Divisi</label><select id="h-division" required class="w-full px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm">${DIVISIONS.map(d => `<option value="${d}">${d}</option>`).join('')}</select></div>
-                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Jabatan</label><select id="h-position" required class="w-full px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm">${HEAD_POSITIONS.map(p => `<option value="${p}">${p}</option>`).join('')}</select></div>
-                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email</label><input type="email" id="h-email" required class="w-full px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm"></div>
-                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">WhatsApp</label><input type="text" id="h-phone" required class="w-full px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm"></div>
-                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">User</label><input type="text" id="h-username" class="w-full px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm"></div>
-                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Pass</label><input type="text" id="h-password" class="w-full px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm"></div>
-                            </div>
-                            <div class="flex gap-4 pt-4"><button type="button" onclick="cancelHeadEdit()" class="flex-1 py-3 bg-slate-100 text-slate-500 rounded-xl font-bold text-xs">Batal</button><button type="submit" class="flex-[3] py-3 bg-blue-600 text-white rounded-xl font-black uppercase shadow-xl hover:bg-blue-700 transition-all text-xs">${editingHeadId ? 'Update Data' : 'Simpan Data'}</button></div>
-                        </form>
-                    </div>
-
-                    <!-- DATA LIST -->
-                    <div class="glass-card rounded-2xl md:rounded-[2.5rem] border border-slate-100 overflow-x-auto shadow-sm">
-                        <table class="w-full text-left min-w-[500px]">
-                            <thead class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b">
-                                <tr><th class="px-6 md:px-8 py-5">Info Head</th><th class="px-6 py-5">Jabatan</th><th class="px-6 md:px-8 py-5 text-right">Aksi</th></tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-50">
-                                ${heads.map(h => `<tr><td class="px-6 md:px-8 py-5"><p class="text-xs md:text-sm font-black text-slate-800">${h.name}</p><p class="text-[9px] md:text-[10px] text-slate-400">${h.email}</p></td><td class="px-6 py-5"><p class="text-[10px] md:text-xs font-bold text-slate-600">${h.division}</p><p class="text-[9px] md:text-[10px] text-slate-400">${h.position}</p></td><td class="px-6 md:px-8 py-5 text-right"><button onclick="editHead('${h.id}')" class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 transition-all"><i class="fas fa-edit text-[10px]"></i></button><button onclick="deleteHead('${h.id}')" class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 transition-all ml-1 md:ml-2"><i class="fas fa-trash text-[10px]"></i></button></td></tr>`).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>`;
-            $('head-form').addEventListener('submit', handleHeadSubmit);
+        async function handleEmployeeSubmit(e) {
+            e.preventDefault();
+            const payload = { 
+                id: editingUserId || 'USR-' + Math.floor(1000 + Math.random()*9000), name: $('e-name').value, division: $('e-division').value, position: $('e-position').value, 
+                email: $('e-email').value, phone: $('e-phone').value, username: $('e-username').value, password: $('e-password').value, 
+                annualquota: parseInt($('e-annual').value), specialquota: parseInt($('e-special').value), used: 0, pending: 0 
+            };
+            await callGAS('saveUser', payload);
+            showToast('Memproses...');
+            setTimeout(async () => { await fetchFromSheet(); loadEmployeeManagerUI(); }, 1200);
         }
 
-        // --- HRD PROFILE MANAGER ---
-        function loadHRDProfile() {
-            $('main-content').innerHTML = `
-                <div class="animate-fade-in space-y-8 max-w-2xl mx-auto">
-                    <div class="glass-card p-6 md:p-10 rounded-2xl md:rounded-[3rem] shadow-xl border border-white">
-                        <div class="flex items-center gap-6 mb-10 pb-6 border-b border-slate-50">
-                            <div class="w-16 h-16 md:w-20 md:h-20 bg-blue-600 rounded-2xl md:rounded-3xl flex items-center justify-center text-white text-2xl md:text-3xl shadow-xl">
-                                <i class="fas fa-user-shield"></i>
-                            </div>
-                            <div>
-                                <h3 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight">Profil HRD</h3>
-                                <p class="text-[9px] md:text-xs text-slate-500 font-medium uppercase tracking-widest mt-1">Kontak Notifikasi</p>
-                            </div>
-                        </div>
-                        
-                        <form id="hrd-profile-form" class="space-y-6">
-                            <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nama Lengkap</label><input type="text" id="hrd-name" value="${hrdProfile.name}" required class="w-full px-4 py-3.5 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm"></div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Divisi</label><input type="text" id="hrd-division" value="${hrdProfile.division}" required class="w-full px-4 py-3.5 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm"></div>
-                                <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Jabatan</label><input type="text" id="hrd-position" value="${hrdProfile.position}" required class="w-full px-4 py-3.5 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm"></div>
-                            </div>
-                            <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email</label><input type="email" id="hrd-email" value="${hrdProfile.email}" required class="w-full px-4 py-3.5 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm"></div>
-                            <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nomor WhatsApp (62...)</label><input type="text" id="hrd-phone" value="${hrdProfile.phone}" required class="w-full px-4 py-3.5 rounded-xl border border-slate-100 bg-slate-50 font-semibold text-sm"></div>
-                            
-                            <button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-xl md:rounded-2xl font-black uppercase shadow-xl hover:bg-blue-700 transition-all mt-4 text-xs">Simpan Perubahan</button>
-                        </form>
-                    </div>
-                </div>`;
-            $('hrd-profile-form').addEventListener('submit', (e) => {
-                e.preventDefault();
-                hrdProfile = {
-                    name: $('hrd-name').value,
-                    division: $('hrd-division').value,
-                    position: $('hrd-position').value,
-                    email: $('hrd-email').value,
-                    phone: $('hrd-phone').value
-                };
-                showToast('Profil HRD berhasil diperbarui');
-                loadHRDProfile();
-            });
+        async function handleHeadSubmit(e) {
+            e.preventDefault();
+            const payload = { 
+                id: editingHeadId || 'HEAD-' + Math.floor(1000 + Math.random()*9000), name: $('h-name').value, division: $('h-division').value, position: $('h-position').value, 
+                email: $('h-email').value, phone: $('h-phone').value, username: $('h-username').value, password: $('h-password').value 
+            };
+            await callGAS('saveHead', payload);
+            showToast('Memproses...');
+            setTimeout(async () => { await fetchFromSheet(); loadHeadManagerUI(); }, 1200);
         }
 
-        // --- EDITING LOGIC ---
         function editUser(id) {
-            editingUserId = id; const u = users.find(u => u.id === id); if (!u) return;
-            loadEmployeeManager();
+            editingUserId = id; 
+            const u = users.find(user => user.ID === id); 
+            if (!u) return;
+            loadEmployeeManagerUI();
             setTimeout(() => {
-                if($('e-name')){
-                    $('e-name').value = u.name; $('e-division').value = u.division.trim(); $('e-position').value = u.position.trim();
-                    $('e-email').value = u.email; $('e-phone').value = u.phone; $('e-username').value = u.username;
-                    $('e-password').value = u.password; $('e-annual').value = u.annualQuota; $('e-special').value = u.specialQuota;
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-            }, 60);
+                $('e-name').value = u.Name || '';
+                $('e-division').value = u.Division || '';
+                $('e-position').value = u.Position || '';
+                $('e-email').value = u.Email || '';
+                $('e-phone').value = u.Phone || '';
+                $('e-username').value = u.Username || '';
+                $('e-password').value = u.Password || '';
+                $('e-annual').value = u.AnnualQuota || 12;
+                $('e-special').value = u.SpecialQuota || 40;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 100);
         }
 
         function editHead(id) {
-            editingHeadId = id; const h = heads.find(h => h.id === id); if (!h) return;
-            loadHeadManager();
+            editingHeadId = id; 
+            const h = heads.find(head => head.ID === id); 
+            if (!h) return;
+            loadHeadManagerUI();
             setTimeout(() => {
-                if($('h-name')){
-                    $('h-name').value = h.name; $('h-division').value = h.division.trim(); $('h-position').value = h.position.trim();
-                    $('h-email').value = h.email; $('h-phone').value = h.phone; $('h-username').value = h.username;
-                    $('h-password').value = h.password;
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-            }, 60);
+                $('h-name').value = h.Name || '';
+                $('h-division').value = h.Division || '';
+                $('h-position').value = h.Position || '';
+                $('h-email').value = h.Email || '';
+                $('h-phone').value = h.Phone || '';
+                $('h-username').value = h.Username || '';
+                $('h-password').value = h.Password || '';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 100);
         }
-
-        function handleEmployeeSubmit(e) {
-            e.preventDefault();
-            const newUser = { id: editingUserId || 'USR-' + Math.floor(1000 + Math.random() * 9000), name: $('e-name').value, division: $('e-division').value, position: $('e-position').value, email: $('e-email').value, phone: $('e-phone').value, username: $('e-username').value, password: $('e-password').value, annualQuota: parseInt($('e-annual').value), specialQuota: parseInt($('e-special').value), used: 0, pending: 0 };
-            if (editingUserId) { const idx = users.findIndex(u => u.id === editingUserId); users[idx] = newUser; }
-            else { users.push(newUser); }
-            editingUserId = null; 
-            loadEmployeeManager(); 
-            showToast('Data Karyawan tersimpan');
-        }
-
-        function handleHeadSubmit(e) {
-            e.preventDefault();
-            const newHead = { id: editingHeadId || 'HEAD-' + Math.floor(1000 + Math.random() * 9000), name: $('h-name').value, division: $('h-division').value, position: $('h-position').value, email: $('h-email').value, phone: $('h-phone').value, username: $('h-username').value, password: $('h-password').value };
-            if (editingHeadId) { const idx = heads.findIndex(h => h.id === editingHeadId); heads[idx] = newHead; }
-            else { heads.push(newHead); }
-            editingHeadId = null; 
-            loadHeadManager(); 
-            showToast('Data Head tersimpan');
-        }
-
-        function cancelEdit() { editingUserId = null; loadEmployeeManager(); }
-        function cancelHeadEdit() { editingHeadId = null; loadHeadManager(); }
-        function deleteUser(id) { if (confirm('Hapus karyawan?')) { users = users.filter(u => u.id !== id); loadEmployeeManager(); } }
-        function deleteHead(id) { if (confirm('Hapus head?')) { heads = heads.filter(h => h.id !== id); loadHeadManager(); } }
-
-        // --- LEAVE ACTIONS ---
-        function onLeaveTypeChange() {
-            const type = $('r-type').value; const startVal = $('r-start').value;
-            if (POLICY_DURATIONS[type]) { $('r-end').readOnly = true; $('r-end').classList.add('bg-slate-100'); if (startVal) calculateFixedEnd(); } 
-            else { $('r-end').readOnly = false; $('r-end').classList.remove('bg-slate-100'); }
-            updateDur();
-        }
-
-        function calculateFixedEnd() {
-            const type = $('r-type').value; const startVal = $('r-start').value;
-            if (!startVal) return; const start = new Date(startVal); const duration = POLICY_DURATIONS[type];
-            if (start && !isNaN(start.getTime()) && duration) {
-                const end = new Date(start); end.setDate(start.getDate() + (duration - 1));
-                $('r-end').value = end.toISOString().split('T')[0];
-            }
-        }
-
-        function updateDur() {
-            const s = $('r-start').value; const e = $('r-end').value; const type = $('r-type').value;
-            if (POLICY_DURATIONS[type] && s) { calculateFixedEnd(); $('r-duration-view').innerText = POLICY_DURATIONS[type] + " Hari"; } 
-            else if (s && e) {
-                const sDate = new Date(s); const eDate = new Date(e); sDate.setHours(0,0,0,0); eDate.setHours(0,0,0,0);
-                const diffTime = eDate - sDate; const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                $('r-duration-view').innerText = (diffDays > 0 ? diffDays : 0) + " Hari";
-            } else { $('r-duration-view').innerText = "0 Hari"; }
-        }
-
-        $('r-start').addEventListener('change', updateDur);
-        $('r-end').addEventListener('change', updateDur);
-
-        function openRequestModal() {
-            const data = currentUser.data || users[0];
-            $('r-division').value = data.division || '-';
-            $('r-position').value = data.position || '-';
-            const target = $('r-target-head');
-            target.innerHTML = '<option value="">Pilih Head Dept</option>';
-            heads.forEach(h => { target.innerHTML += `<option value="${h.id}">${h.position} (${h.name})</option>`; });
-            const handover = $('r-handover');
-            handover.innerHTML = '<option value="">Pilih Rekan Kerja</option>';
-            users.forEach(u => { if (u.name !== currentUser.name) { handover.innerHTML += `<option value="${u.name}">${u.name} (${u.position})</option>`; } });
-            $('modal-request').classList.remove('hidden'); $('modal-request').classList.add('flex');
-        }
-
-        function closeRequestModal() { $('modal-request').classList.add('hidden'); $('modal-request').classList.remove('flex'); $('leave-request-form').reset(); }
-
-        $('leave-request-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const dur = parseInt($('r-duration-view').innerText) || 0;
-            const userRef = currentUser.data || users[0];
-            const targetHeadId = $('r-target-head').value;
-            const headInfo = heads.find(h => h.id === targetHeadId);
-
-            const newReq = {
-                id: 'TWA-' + Math.floor(1000 + Math.random() * 9000),
-                name: currentUser.name, division: userRef.division, position: userRef.position,
-                targetHeadId: targetHeadId, targetHeadPosition: headInfo.position,
-                type: $('r-type').value, duration: dur, start: $('r-start').value, end: $('r-end').value,
-                status: 'HEAD_DEPT_REVIEW', reason: $('r-reason').value, handover: $('r-handover').value,
-                submittedAt: new Date().toISOString().split('T')[0], headNote: '', hrdNote: '', employeePhone: userRef.phone
-            };
-            leaveRequests.unshift(newReq);
-            userRef.pending++;
-            if (newReq.type === 'Annual Leave') userRef.annualQuota -= dur;
-            
-            if (headInfo && headInfo.phone) {
-                const message = `*NOTIFIKASI PENGJUAN CUTI*\n\nHalo ${headInfo.name},\n\nAda pengajuan cuti baru dari *${currentUser.name}* (${userRef.position}).\n\n*Detail Pengajuan:*\n- Tipe: ${newReq.type}\n- Periode: ${formatDate(newReq.start)} s/d ${formatDate(newReq.end)}\n- Durasi: ${newReq.duration} Hari\n- Alasan: ${newReq.reason}\n\nSilakan login ke *ECrew Transwisata* untuk memproses pengajuan ini.\n\nTerima kasih.`;
-                triggerWhatsApp(headInfo.phone, message);
-            }
-            showToast('Pengajuan Terkirim & Head Dept Diberitahu'); closeRequestModal(); loadDashboard();
-        });
 
         function loadHistory() {
             let data = leaveRequests;
-            if (currentUser.role === ROLES.STAFF) data = data.filter(r => r.name === currentUser.name);
-            else if (currentUser.role === ROLES.HEAD) data = data.filter(r => r.targetHeadId === currentUser.data.id);
-            $('main-content').innerHTML = `<div class="space-y-6"><h3 class="text-sm md:text-xl font-black uppercase">Riwayat Cuti</h3><div class="glass-card rounded-2xl md:rounded-[2rem] overflow-x-auto shadow-sm"><table class="w-full text-left min-w-[500px]"><thead class="bg-slate-50 text-[10px] font-black uppercase border-b"><tr><th class="px-6 md:px-8 py-5">Karyawan</th><th class="px-6 py-5">Periode</th><th class="px-6 py-5">Status</th><th class="px-6 md:px-8 py-5 text-right">Aksi</th></tr></thead><tbody class="divide-y divide-slate-50">${data.map(r => `<tr><td class="px-6 md:px-8 py-5"><p class="font-black text-xs md:text-sm text-slate-800">${r.name}</p><p class="text-[8px] md:text-[9px] uppercase font-bold text-slate-400">${r.position}</p></td><td class="px-6 py-5"><p class="text-[10px] md:text-xs font-bold text-slate-700">${r.type}</p><p class="text-[9px] md:text-[10px] text-slate-500">${formatDate(r.start)} (${r.duration} Hari)</p></td><td class="px-6 py-5"><span class="px-2 md:px-3 py-1 rounded-full text-[7px] md:text-[9px] font-black uppercase ${r.status.includes('APP') ? 'bg-emerald-100 text-emerald-600' : (r.status === 'REJECTED' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600')}">${r.status.replace(/_/g, ' ')}</span></td><td class="px-6 md:px-8 py-5 text-right"><button onclick="showDetail('${r.id}')" class="text-blue-600 hover:text-blue-800"><i class="fas fa-eye"></i></button></td></tr>`).join('')}</tbody></table></div></div>`;
+            if (currentUser.role === ROLES.STAFF) data = data.filter(r => r.Name === currentUser.name);
+            $('main-content').innerHTML = `
+                <div class="animate-fade-in space-y-6">
+                    <h3 class="font-black uppercase text-slate-800 tracking-tight">Riwayat Cuti</h3>
+                    <div class="glass-card rounded-[2rem] overflow-hidden shadow-sm">
+                        <table class="w-full text-left"><thead class="bg-slate-50 text-[10px] font-black uppercase border-b"><tr><th class="px-8 py-5">Karyawan</th><th class="px-6 py-5">Periode</th><th class="px-6 py-5">Status</th><th class="px-8 py-5 text-right">Info</th></tr></thead>
+                        <tbody class="divide-y divide-slate-50">${data.map(r => `<tr><td class="px-8 py-5"><p class="text-xs font-black">${r.Name}</p><p class="text-[9px] text-slate-400 uppercase">${r.Position}</p></td><td class="px-6 py-5"><p class="text-[10px] font-bold">${r.Type}</p><p class="text-[9px] text-slate-500">${formatDate(r.Start)}</p></td><td class="px-6 py-5"><span class="px-3 py-1 rounded-full text-[8px] font-black uppercase ${r.Status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : (r.Status === 'REJECTED' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600')}">${r.Status}</span></td><td class="px-8 py-5 text-right"><button onclick="showDetail('${r.ID}')" class="text-blue-600"><i class="fas fa-eye"></i></button></td></tr>`).join('')}</tbody></table>
+                    </div>
+                </div>`;
         }
 
         function loadApprovalList() {
-            let pending = [];
-            if (currentUser.role === ROLES.HEAD) pending = leaveRequests.filter(r => r.status === 'HEAD_DEPT_REVIEW' && r.targetHeadId === currentUser.data.id);
-            else if (currentUser.role === ROLES.HRD) pending = leaveRequests.filter(r => r.status === 'HRD_APPROVAL');
-            
-            $('main-content').innerHTML = `<div class="space-y-6 md:space-y-8"><h3 class="text-sm md:text-xl font-black uppercase">Antrean Persetujuan</h3><div class="grid grid-cols-1 gap-4">${pending.map(r => `<div class="glass-card p-4 md:p-6 rounded-2xl md:rounded-[2rem] border flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-4"><div class="flex items-center gap-4"><div><h4 class="text-sm md:text-lg font-black text-slate-800">${r.name}</h4><p class="text-[8px] md:text-[10px] uppercase font-black text-blue-600">${r.division} • ${r.position}</p><p class="text-[10px] md:text-xs font-bold text-slate-500">${r.type} (${r.duration} Hari)</p></div></div><div class="flex gap-2"><button onclick="handleApproval('${r.id}', false)" class="flex-1 md:flex-none px-4 md:px-6 py-2.5 md:py-3 bg-red-50 text-red-600 rounded-xl font-bold text-[10px] hover:bg-red-600 hover:text-white transition-all">Tolak</button><button onclick="handleApproval('${r.id}', true)" class="flex-[2] md:flex-none px-6 md:px-8 py-2.5 md:py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all">Setujui</button></div></div>`).join('') || '<p class="p-20 text-center text-slate-400 italic glass-card rounded-[2rem] text-xs">Antrean kosong.</p>'}</div></div>`;
+            const pending = leaveRequests.filter(r => (currentUser.role === ROLES.HEAD && r.Status === 'HEAD_DEPT_REVIEW' && r.TargetHeadId === currentUser.data.ID) || (currentUser.role === ROLES.HRD && r.Status === 'HRD_APPROVAL'));
+            $('main-content').innerHTML = `
+                <div class="animate-fade-in space-y-6">
+                    <h3 class="font-black uppercase text-slate-800">Antrean Persetujuan</h3>
+                    <div class="grid grid-cols-1 gap-4">
+                        ${pending.length === 0 ? '<p class="text-slate-400 italic py-10 text-center glass-card rounded-3xl">Tidak ada antrean.</p>' : 
+                        pending.map(r => `
+                        <div class="glass-card p-6 rounded-3xl flex justify-between items-center shadow-sm">
+                            <div><h4 class="font-black text-slate-800">${r.Name}</h4><p class="text-xs font-bold text-blue-600 uppercase">${r.Type}</p><p class="text-[10px] text-slate-500">${formatDate(r.Start)}</p></div>
+                            <div class="flex gap-2"><button onclick="handleApprovalAction('${r.ID}', false)" class="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold text-[10px] uppercase">Tolak</button><button onclick="handleApprovalAction('${r.ID}', true)" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-[10px] uppercase shadow-lg">Setuju</button></div>
+                        </div>`).join('')}
+                    </div>
+                </div>`;
         }
 
-        function handleApproval(id, isApprove) {
-            pendingNoteId = id; pendingNoteIsApprove = isApprove;
-            $('note-title').innerText = isApprove ? 'Konfirmasi Persetujuan' : 'Konfirmasi Penolakan';
-            $('note-label').innerText = isApprove ? 'Catatan Tambahan (Opsional)' : 'Alasan Penolakan (Wajib)';
-            $('note-text').value = ''; $('modal-note').classList.remove('hidden'); $('modal-note').classList.add('flex');
+        function handleApprovalAction(id, approve) { pendingApprovalId = id; isApproveAction = approve; $('note-title').innerText = approve ? 'Setujui' : 'Tolak'; $('modal-note').classList.remove('hidden'); $('modal-note').classList.add('flex'); }
+        async function confirmApprovalWithNote() {
+            const note = $('note-text').value.trim();
+            const req = leaveRequests.find(r => r.ID === pendingApprovalId);
+            if (!req) return;
+            req.Status = isApproveAction ? (currentUser.role === ROLES.HEAD ? 'HRD_APPROVAL' : 'APPROVED') : 'REJECTED';
+            if (currentUser.role === ROLES.HEAD) req.HeadNote = note; else req.HRDNote = note;
+            await callGAS('saveRequest', req);
+            closeNoteModal();
+            setTimeout(async () => { await fetchFromSheet(); loadApprovalList(); }, 1200);
+        }
+        function closeNoteModal() { $('modal-note').classList.add('hidden'); $('modal-note').classList.remove('flex'); }
+
+        function loadHRDProfile() {
+            $('main-content').innerHTML = `
+                <div class="animate-fade-in max-w-xl mx-auto">
+                    <div class="glass-card p-10 rounded-[2.5rem] shadow-xl space-y-6">
+                        <h3 class="text-xl font-black uppercase text-blue-900 border-b pb-4">Profil HR Dept</h3>
+                        <form id="hr-profile-form" class="space-y-4">
+                            <div><label class="text-[10px] font-black uppercase text-slate-400">Nama Manager</label><input type="text" id="hr-p-name" value="${hrdProfile.name}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
+                            <div><label class="text-[10px] font-black uppercase text-slate-400">Email Notifikasi</label><input type="email" id="hr-p-email" value="${hrdProfile.email}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
+                            <div><label class="text-[10px] font-black uppercase text-slate-400">WhatsApp Notifikasi</label><input type="text" id="hr-p-phone" value="${hrdProfile.phone}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
+                            <button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-xs shadow-lg mt-4">Simpan Profil</button>
+                        </form>
+                    </div>
+                </div>`;
+            $('hr-profile-form').addEventListener('submit', async (e) => { e.preventDefault(); hrdProfile = { name: $('hr-p-name').value, email: $('hr-p-email').value, phone: $('hr-p-phone').value }; await callGAS('saveProfile', hrdProfile); showToast('Profil diperbarui'); });
         }
 
-        function closeNoteModal() { $('modal-note').classList.add('hidden'); $('modal-note').classList.remove('flex'); pendingNoteId = null; }
-
-        function confirmApprovalWithNote() {
-            const note = $('note-text').value.trim(); if (!pendingNoteIsApprove && !note) { alert('Harap berikan alasan.'); return; }
-            const idx = leaveRequests.findIndex(r => r.id === pendingNoteId); if (idx === -1) return;
-            const req = leaveRequests[idx];
-            
-            const headName = currentUser.name;
-            const statusLabel = pendingNoteIsApprove ? 'DISETUJUI' : 'DITOLAK';
-
-            if (!pendingNoteIsApprove) { 
-                req.status = 'REJECTED'; 
-                if (currentUser.role === ROLES.HEAD) req.headNote = note; else req.hrdNote = note; 
-            } 
-            else { 
-                if (currentUser.role === ROLES.HEAD) { 
-                    req.status = 'HRD_APPROVAL'; req.headNote = note; 
-                } else { 
-                    req.status = 'APPROVED'; req.hrdNote = note; 
-                    const userRef = users.find(u => u.name === req.name); 
-                    if (userRef) { userRef.pending--; userRef.used += req.duration; } 
-                } 
-            }
-
-            // NOTIFIKASI KE KARYAWAN
-            if (req.employeePhone) {
-                const messageUser = `*UPDATE STATUS CUTI*\n\nHalo ${req.name},\n\nPengajuan cuti Anda (#${req.id}) telah *${statusLabel}* oleh ${headName}.\n\n*Detail:*\n- Periode: ${formatDate(req.start)} - ${formatDate(req.end)}\n- Catatan: ${note || '-'}\n\nSilakan cek detail di aplikasi.\n\nTerima kasih.`;
-                triggerWhatsApp(req.employeePhone, messageUser);
-            }
-
-            // NOTIFIKASI KE HRD (Gunakan data dari Profil HRD)
-            if (hrdProfile.phone) {
-                const messageHRD = `*LAPORAN PERSETUJUAN CUTI*\n\nInformasi untuk HRD,\n\nHead Dept *${headName}* telah memberikan keputusan *${statusLabel}* pada pengajuan cuti berikut:\n\n*Detail Karyawan:*\n- Nama: ${req.name}\n- Jabatan: ${req.position}\n- Tipe: ${req.type}\n- Durasi: ${req.duration} Hari\n- Catatan Head: ${note || '-'}\n\nStatus saat ini: ${req.status.replace(/_/g, ' ')}.\n\n_Sistem ECrew Transwisata_`;
-                
-                setTimeout(() => { triggerWhatsApp(hrdProfile.phone, messageHRD); }, 500);
-            }
-
-            showToast(pendingNoteIsApprove ? 'Berhasil disetujui' : 'Berhasil ditolak'); 
-            closeNoteModal(); 
-            loadApprovalList();
+        // --- UTILS ---
+        function openRequestModal() {
+            const data = currentUser.data || { Division: '-', Position: '-' };
+            $('r-division').value = data.Division; $('r-position').value = data.Position;
+            const t = $('r-target-head'); t.innerHTML = '<option value="">Pilih Head Dept</option>';
+            heads.forEach(h => t.innerHTML += `<option value="${h.ID}">${h.Position} (${h.Name})</option>`);
+            const h = $('r-handover'); h.innerHTML = '<option value="">Pilih Rekan</option>';
+            users.forEach(u => { if(u.Name !== currentUser.name) h.innerHTML += `<option value="${u.Name}">${u.Name}</option>`; });
+            $('modal-request').classList.remove('hidden'); $('modal-request').classList.add('flex');
         }
+        function closeRequestModal() { $('modal-request').classList.add('hidden'); $('modal-request').classList.remove('flex'); }
+        function onLeaveTypeChange() { updateDur(); }
+        function updateDur() {
+            const s = $('r-start').value, e = $('r-end').value;
+            if(s && e) {
+                const diff = Math.round((new Date(e) - new Date(s)) / (1000*60*60*24)) + 1;
+                $('r-duration-view').innerText = (diff > 0 ? diff : 0) + " Hari";
+            }
+        }
+        $('r-start').addEventListener('change', updateDur);
+        $('r-end').addEventListener('change', updateDur);
+
+        $('leave-request-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const dur = parseInt($('r-duration-view').innerText) || 0;
+            const hInfo = heads.find(h => h.ID === $('r-target-head').value);
+            const payload = {
+                id: 'TWA-' + Math.floor(1000 + Math.random()*9000), name: currentUser.name, division: currentUser.data.Division, position: currentUser.data.Position,
+                targetheadid: $('r-target-head').value, type: $('r-type').value, duration: dur, start: $('r-start').value, end: $('r-end').value,
+                status: 'HEAD_DEPT_REVIEW', reason: $('r-reason').value, handover: $('r-handover').value, phone: currentUser.data.Phone
+            };
+            await callGAS('saveRequest', payload);
+            if (hInfo && hInfo.Phone) triggerWhatsApp(hInfo.Phone, `Ada pengajuan cuti baru dari ${currentUser.name}.`);
+            showToast('Terkirim'); closeRequestModal();
+            setTimeout(async () => { await fetchFromSheet(); loadDashboard(); }, 1200);
+        });
 
         function showDetail(id) {
-            const r = leaveRequests.find(r => r.id === id); if (!r) return;
-            $('detail-id').innerText = '#' + r.id;
-            let notesHtml = '';
-            if (r.headNote) notesHtml += `<div class="col-span-2 bg-blue-50 p-3 md:p-4 rounded-xl md:rounded-2xl border border-blue-100 mt-2"><p class="text-[8px] md:text-[10px] font-black uppercase text-blue-400 mb-1">Catatan Head Dept</p><p class="text-xs md:text-sm font-semibold text-blue-800 italic">"${r.headNote}"</p></div>`;
-            if (r.hrdNote) notesHtml += `<div class="col-span-2 bg-emerald-50 p-3 md:p-4 rounded-xl md:rounded-2xl border border-emerald-100 mt-2"><p class="text-[8px] md:text-[10px] font-black uppercase text-emerald-400 mb-1">Catatan HRD</p><p class="text-xs md:text-sm font-semibold text-emerald-800 italic">"${r.hrdNote}"</p></div>`;
-            $('modal-body').innerHTML = `<div class="grid grid-cols-2 gap-y-4 md:gap-y-6 text-sm"><div class="col-span-2 border-b pb-4"><p class="text-[9px] md:text-[10px] font-black uppercase text-slate-400">Nama Karyawan</p><p class="text-sm md:text-lg font-black text-slate-800">${r.name}</p></div><div><p class="text-[9px] md:text-[10px] font-black uppercase text-slate-400">Divisi</p><p class="text-xs md:text-sm font-bold">${r.division}</p></div><div><p class="text-[9px] md:text-[10px] font-black uppercase text-slate-400">Jabatan</p><p class="text-xs md:text-sm font-bold">${r.position}</p></div><div><p class="text-[9px] md:text-[10px] font-black uppercase text-slate-400">Mulai</p><p class="text-xs md:text-sm font-bold">${formatDate(r.start)}</p></div><div><p class="text-[9px] md:text-[10px] font-black uppercase text-slate-400">Durasi</p><p class="text-xs md:text-sm font-bold">${r.duration} Hari</p></div><div class="col-span-2 bg-slate-50 p-3 md:p-4 rounded-xl md:rounded-2xl border border-slate-100"><p class="text-[8px] md:text-[10px] font-black uppercase text-slate-400 mb-2">Alasan</p><p class="text-xs italic text-slate-600">"${r.reason}"</p></div>${notesHtml}</div>`;
+            const r = leaveRequests.find(req => req.ID === id); if (!r) return;
+            $('detail-id').innerText = '#' + r.ID;
+            $('modal-body').innerHTML = `<div class="grid grid-cols-2 gap-4 text-sm"><div><p class="text-[10px] uppercase text-slate-400 font-black">Karyawan</p><p class="font-bold">${r.Name}</p></div><div class="col-span-2"><p class="text-[10px] uppercase text-slate-400 font-black">Alasan</p><p class="italic">"${r.Reason}"</p></div></div>`;
             $('modal-detail').classList.remove('hidden'); $('modal-detail').classList.add('flex');
         }
-        function closeDetail() { $('modal-detail').classList.add('hidden'); $('modal-detail').classList.remove('flex'); }
+        function closeDetail() { $('modal-detail').classList.add('hidden'); }
+        function formatDate(dateStr) { if (!dateStr) return "-"; const date = new Date(dateStr); return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }); }
+        function showToast(msg, type = 'success') { $('toast-msg').innerText = msg; $('toast').classList.remove('hidden'); setTimeout(() => $('toast').classList.add('hidden'), 3000); }
+        function triggerWhatsApp(phone, message) { const clean = phone.replace(/[^0-9]/g, ''); const final = clean.startsWith('0') ? '62' + clean.substring(1) : clean; window.open(`https://wa.me/${final}?text=${encodeURIComponent(message)}`, '_blank'); }
+        function toggleMobileMenu() { isMobileMenuOpen = !isMobileMenuOpen; $('mobile-nav-overlay').classList.toggle('invisible', !isMobileMenuOpen); $('mobile-nav-overlay').classList.toggle('opacity-0', !isMobileMenuOpen); $('mobile-nav-content').classList.toggle('-translate-x-full', !isMobileMenuOpen); }
 
-        window.onload = () => { 
-            $('current-date').innerText = formatDate(new Date().toISOString().split('T')[0]); 
-            if(users[0]) { users[0].division = "Operation"; users[0].position = "Chief Pilot Fixed Wing"; }
+        window.onload = async () => {
+            $('current-date').innerText = formatDate(new Date());
+            await fetchFromSheet();
+            $('global-loader').classList.add('hidden');
         };
     </script>
 </body>
