@@ -116,7 +116,7 @@
                 </div>
                 <div class="space-y-6">
                     <div class="text-center">
-                        <h2 class="text-xl font-bold text-slate-800">Transwisata ECrew</h2>
+                        <h2 class="text-xl font-bold text-slate-800">ECrew Leaves System</h2>
                         <p class="text-xs text-slate-500 mt-1">Portal Manajemen Cuti Internal</p>
                     </div>
                     <form id="login-form" class="space-y-4">
@@ -184,7 +184,6 @@
                 </div>
                 <div class="p-4 flex-1 overflow-y-auto no-scrollbar" id="mobile-dynamic-nav"></div>
                 
-                <!-- PERBAIKAN: Tombol Logout di Mobile -->
                 <div class="p-6 bg-blue-900/30 mt-auto border-t border-white/5">
                     <div class="flex items-center gap-3 mb-4">
                         <img id="mobile-user-avatar" src="" class="w-10 h-10 rounded-full border-2 border-blue-400 shadow-md" alt="User">
@@ -448,7 +447,7 @@
                         <table class="w-full text-left min-w-[800px]"><thead class="bg-slate-50 text-[10px] font-black uppercase border-b"><tr><th class="px-8 py-5">Karyawan</th><th class="px-6 py-5">Jabatan</th><th class="px-6 py-5 text-center">Annual Bal.</th><th class="px-6 py-5 text-center">Special Bal.</th><th class="px-8 py-5 text-right">Info</th></tr></thead>
                         <tbody class="divide-y divide-slate-50">${users.map(u => {
                             const usedAnnual = leaveRequests.filter(r => r.Name === u.Name && r.Status === 'APPROVED' && r.Type === 'Annual Leave').reduce((sum, r) => sum + (parseInt(r.Duration) || 0), 0);
-                            const usedSpecial = leaveRequests.filter(r => r.Name === u.Name && r.Status === 'APPROVED' && r.Type === 'Special Leave').reduce((sum, r) => sum + (parseInt(r.Duration) || 0), 0);
+                            const usedSpecial = leaveRequests.filter(r => r.Name === u.Name && r.Status === 'APPROVED' && (r.Type === 'Special Leave' || SPECIAL_LEAVE_RULES[r.Type])).reduce((sum, r) => sum + (parseInt(r.Duration) || 0), 0);
                             return `<tr onclick="showUserCard('${u.ID}', 'staff')" class="hover:bg-slate-50 cursor-pointer transition-all group"><td class="px-8 py-5"><p class="text-xs font-black group-hover:text-blue-600 transition-colors">${u.Name}</p><p class="text-[10px] text-slate-400">${u.Email}</p></td><td class="px-6 py-5"><p class="text-[10px] md:text-xs font-bold text-slate-600">${u.Division}</p><p class="text-[9px] text-slate-400">${u.Position}</p></td><td class="px-6 py-5 text-center"><span class="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 font-black text-xs">${(parseInt(u.AnnualQuota)||0)-usedAnnual}</span></td><td class="px-6 py-5 text-center"><span class="px-3 py-1 rounded-lg bg-purple-50 text-purple-700 font-black text-xs">${(parseInt(u.SpecialQuota)||0)-usedSpecial}</span></td><td class="px-8 py-5 text-right text-slate-300"><i class="fas fa-chevron-right text-xs"></i></td></tr>`}).join('')}</tbody></table>
                     </div>
                 </div>`;
@@ -512,17 +511,12 @@
         function loginAs(role, name, data = null) {
             currentUser = { role, name, data }; $('login-page').classList.add('hidden'); $('app-wrapper').classList.remove('hidden');
             const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e3a8a&color=fff&bold=true`;
-            
-            // Desktop
             $('user-name').innerText = name; 
             $('user-role-label').innerText = role === ROLES.STAFF ? (data ? data.Position : 'Staff') : (role === ROLES.HEAD ? data.Position : role.toUpperCase());
             $('user-avatar').src = avatar; 
-            
-            // Mobile
             $('mobile-user-name').innerText = name;
             $('mobile-user-role-label').innerText = role === ROLES.STAFF ? (data ? data.Position : 'Staff') : (role === ROLES.HEAD ? data.Position : role.toUpperCase());
             $('mobile-user-avatar').src = avatar;
-            
             $('header-user-avatar').src = avatar;
             setupNavigation(); switchTab('dashboard');
         }
@@ -562,15 +556,75 @@
         }
 
         function handleApprovalAction(id, approve) { pendingApprovalId = id; isApproveAction = approve; $('note-title').innerText = approve ? 'Setujui' : 'Tolak'; $('modal-note').classList.remove('hidden'); $('modal-note').classList.add('flex'); }
+        
+        // PERBAIKAN: Fungsi approval yang dinamis memperbarui kuota di Google Sheet
         async function confirmApprovalWithNote() {
-            const note = $('note-text').value.trim(); const r = leaveRequests.find(r => r.ID === pendingApprovalId); if (!r) return;
-            r.id = r.ID; r.Status = isApproveAction ? (currentUser.role === ROLES.HEAD ? 'HRD_APPROVAL' : 'APPROVED') : 'REJECTED';
+            const note = $('note-text').value.trim(); 
+            const r = leaveRequests.find(req => req.ID === pendingApprovalId); 
+            if (!r) return;
+            
+            const oldStatus = r.Status;
+            r.id = r.ID; 
+            r.Status = isApproveAction ? (currentUser.role === ROLES.HEAD ? 'HRD_APPROVAL' : 'APPROVED') : 'REJECTED';
+            
             if (currentUser.role === ROLES.HEAD) r.HeadNote = note; else r.HRDNote = note;
-            closeNoteModal(); showToast('Memproses...', 'success'); loadApprovalList(); await callGAS('saveRequest', r);
-            setTimeout(async () => { await fetchFromSheet(); switchTab('approval'); showToast('Keputusan Disimpan!'); }, 800);
+            
+            closeNoteModal(); 
+            showToast('Memproses & Mengupdate Saldo...', 'success'); 
+            loadApprovalList(); 
+            
+            // Simpan perubahan status cuti
+            await callGAS('saveRequest', r);
+            
+            // Jika disetujui (Status APPROVED), kurangi kuota karyawan di Google Sheet secara permanen
+            if (r.Status === 'APPROVED') {
+                const u = users.find(usr => usr.Name === r.Name);
+                if (u) {
+                    const dur = parseInt(r.Duration) || 0;
+                    if (r.Type === 'Annual Leave') {
+                        u.AnnualQuota = Math.max(0, (parseInt(u.AnnualQuota) || 0) - dur);
+                    } else {
+                        // Untuk semua tipe cuti selain Annual Leave, masuk ke kuota Special
+                        u.SpecialQuota = Math.max(0, (parseInt(u.SpecialQuota) || 0) - dur);
+                    }
+                    // Update baris user di Google Sheet agar angka 12/40 nya berubah
+                    await callGAS('saveUser', u);
+                }
+            }
+            
+            setTimeout(async () => { await fetchFromSheet(); switchTab('approval'); showToast('Keputusan & Saldo Disimpan!'); }, 800);
         }
 
-        async function cancelRequest(id) { if(!confirm("Batalkan pengajuan?")) return; const r = leaveRequests.find(r => r.ID === id); if (!r) return; r.id = r.ID; r.Status = 'CANCELLED'; showToast('Membatalkan...', 'success'); await callGAS('saveRequest', r); setTimeout(async () => { await fetchFromSheet(); loadHistory(); showToast('Dibatalkan!'); }, 800); }
+        // PERBAIKAN: Fungsi batal yang mengembalikan kuota ke Google Sheet
+        async function cancelRequest(id) { 
+            if(!confirm("Batalkan pengajuan?")) return; 
+            const r = leaveRequests.find(req => req.ID === id); 
+            if (!r) return; 
+            
+            const oldStatus = r.Status;
+            r.id = r.ID; 
+            r.Status = 'CANCELLED'; 
+            
+            showToast('Membatalkan & Mengembalikan Saldo...', 'success'); 
+            await callGAS('saveRequest', r); 
+
+            // Jika cuti yang dibatalkan sudah berstatus APPROVED, kembalikan saldonya ke Google Sheet
+            if (oldStatus === 'APPROVED') {
+                const u = users.find(usr => usr.Name === r.Name);
+                if (u) {
+                    const dur = parseInt(r.Duration) || 0;
+                    if (r.Type === 'Annual Leave') {
+                        u.AnnualQuota = (parseInt(u.AnnualQuota) || 0) + dur;
+                    } else {
+                        u.SpecialQuota = (parseInt(u.SpecialQuota) || 0) + dur;
+                    }
+                    await callGAS('saveUser', u);
+                }
+            }
+
+            setTimeout(async () => { await fetchFromSheet(); loadHistory(); showToast('Cuti Dibatalkan & Saldo Dikembalikan!'); }, 800); 
+        }
+
         function closeNoteModal() { $('note-text').value = ''; $('modal-note').classList.add('hidden'); $('modal-note').classList.remove('flex'); }
 
         function loadHRDProfile() {
