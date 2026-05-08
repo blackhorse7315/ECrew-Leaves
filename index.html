@@ -225,7 +225,7 @@
             "Menikah": 3, "Menikahkan anak": 2, "Istri melahirkan / keguguran": 2, "Khitanan anak": 2, "Baptis anak (2 Hari)": 2, "Keluarga serumah meninggal": 2, "Anggota keluarga serumah lain meninggal": 1
         };
 
-        let users = []; let heads = []; let leaveRequests = []; let hrdProfile = { name: 'Admin TWA', division: 'HR', position: 'Manager', email: 'hr@transwisata.com', phone: '628123456789' };
+        let users = []; let heads = []; let leaveRequests = []; let hrdProfile = { name: 'Admin TWA', division: 'HR', position: 'Manager', email: 'hr@transwisata.com', phone: '628123456789', LastResetYear: '0' };
         const ROLES = { STAFF: 'staff', HEAD: 'head', HRD: 'hrd' };
         let currentUser = null; 
         let editingUserId = null; 
@@ -234,7 +234,7 @@
         let pendingApprovalId = null; let isApproveAction = true; let isMobileMenuOpen = false; let isSyncing = false;
         const $ = (id) => document.getElementById(id);
 
-        // Helper untuk memastikan format tanggal selalu YYYY-MM-DD (menghindari UTC pergeseran)
+        // Helper untuk memastikan format tanggal selalu YYYY-MM-DD
         function toISODateString(val) {
             if (!val) return "";
             if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
@@ -268,6 +268,10 @@
                         const updated = users.find(u => u.ID.toString() === currentUser.data.ID.toString());
                         if (updated) currentUser.data = updated;
                     }
+
+                    // AUTO RESET LOGIC (Jan 1st)
+                    await checkAndResetAnnualQuotas();
+
                     return true;
                 }
             } catch (err) { 
@@ -275,6 +279,26 @@
                 if ($('sync-status-text')) $('sync-status-text').innerText = "Gagal menghubungkan ke Database";
             } 
             return false;
+        }
+
+        async function checkAndResetAnnualQuotas() {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const lastReset = parseInt(hrdProfile.LastResetYear) || 0;
+
+            // Trigger reset jika ini tanggal 1 Jan (atau lebih) dan tahun reset terakhir lebih kecil dari tahun sekarang
+            if (now.getMonth() === 0 && now.getDate() >= 1 && lastReset < currentYear) {
+                console.log("Menjalankan Reset Kuota Tahunan Otomatis...");
+                for (let u of users) {
+                    u.AnnualQuota = 12;
+                    u.SpecialQuota = 40;
+                    u.id = u.ID;
+                    await callGAS('saveUser', u);
+                }
+                hrdProfile.LastResetYear = currentYear.toString();
+                await callGAS('saveProfile', hrdProfile);
+                showToast(`Kuota Tahunan Berhasil Di-reset ke ${currentYear}!`, 'success');
+            }
         }
 
         async function manualSync() {
@@ -513,8 +537,122 @@
         }
 
         function loadHistory() {
-            let data = leaveRequests; if (currentUser.role === ROLES.STAFF) data = data.filter(r => r.Name === currentUser.name);
-            $('main-content').innerHTML = `<div class="animate-fade-in space-y-6"><h3 class="font-black uppercase text-slate-800 tracking-tight">Riwayat Cuti</h3><div class="glass-card rounded-[2rem] overflow-hidden shadow-sm"><table class="w-full text-left"><thead class="bg-slate-50 text-[10px] font-black uppercase border-b"><tr><th class="px-8 py-5">Karyawan</th><th class="px-6 py-5">Periode</th><th class="px-6 py-5">Status</th><th class="px-8 py-5 text-right">Aksi</th></tr></thead><tbody class="divide-y divide-slate-50">${data.map(r => `<tr><td class="px-8 py-5"><p class="text-xs font-black">${r.Name}</p><p class="text-[9px] text-slate-400 uppercase">${r.Position}</p></td><td class="px-6 py-5"><p class="text-[10px] font-bold">${r.Type}</p><p class="text-[9px] text-slate-500">${formatDate(r.Start)}</p></td><td class="px-6 py-5"><span class="px-3 py-1 rounded-full text-[8px] font-black uppercase ${r.Status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : (r.Status === 'REJECTED' ? 'bg-red-100 text-red-600' : (r.Status === 'CANCELLED' ? 'bg-slate-100 text-slate-400' : 'bg-amber-100 text-amber-600'))}">${r.Status}</span></td><td class="px-8 py-5 text-right flex justify-end items-center gap-3">${currentUser.role === ROLES.STAFF && !['APPROVED','REJECTED','CANCELLED'].includes(r.Status) ? `<button onclick="cancelRequest('${r.ID}')" class="text-red-500 text-[10px] font-bold uppercase"><i class="fas fa-times-circle"></i> Batal</button>` : ''}<button onclick="showDetail('${r.ID}')" class="text-blue-600"><i class="fas fa-eye"></i></button></td></tr>`).join('')}</tbody></table></div></div>`;
+            let data = [...leaveRequests]; 
+            if (currentUser.role === ROLES.STAFF) {
+                data = data.filter(r => r.Name === currentUser.name);
+            }
+
+            // Grouping by Month & Year
+            const grouped = data.reduce((acc, r) => {
+                const d = new Date(r.Start);
+                if (isNaN(d.getTime())) return acc;
+                const monthYear = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+                if (!acc[monthYear]) acc[monthYear] = [];
+                acc[monthYear].push(r);
+                return acc;
+            }, {});
+
+            // Sort keys descending (Newest first)
+            const sortedKeys = Object.keys(grouped).sort((a, b) => {
+                const dateA = new Date(a.split(' ').reverse().join(' '));
+                const dateB = new Date(b.split(' ').reverse().join(' '));
+                return dateB - dateA;
+            });
+
+            let historyHTML = `<div class="animate-fade-in space-y-8"><h3 class="font-black uppercase text-slate-800 tracking-tight">Riwayat Cuti</h3>`;
+            
+            if (sortedKeys.length === 0) {
+                historyHTML += `<p class="text-slate-400 italic py-20 text-center glass-card rounded-[2rem]">Belum ada riwayat pengajuan.</p>`;
+            } else {
+                sortedKeys.forEach(key => {
+                    historyHTML += `
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-4 px-2">
+                                <span class="h-px flex-1 bg-slate-200"></span>
+                                <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">${key}</h4>
+                                <span class="h-px flex-1 bg-slate-200"></span>
+                            </div>
+                            <div class="glass-card rounded-[2rem] overflow-hidden shadow-sm">
+                                <table class="w-full text-left">
+                                    <thead class="bg-slate-50 text-[10px] font-black uppercase border-b text-slate-400">
+                                        <tr>
+                                            <th class="px-8 py-5">Karyawan</th>
+                                            <th class="px-6 py-5">Periode</th>
+                                            <th class="px-6 py-5">Status</th>
+                                            <th class="px-8 py-5 text-right">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-50">
+                                        ${grouped[key].map(r => `
+                                            <tr class="hover:bg-slate-50/50 transition-colors">
+                                                <td class="px-8 py-5">
+                                                    <p class="text-xs font-black text-slate-800">${r.Name}</p>
+                                                    <p class="text-[9px] text-slate-400 uppercase font-bold">${r.Position}</p>
+                                                </td>
+                                                <td class="px-6 py-5">
+                                                    <p class="text-[10px] font-bold text-blue-600">${r.Type}</p>
+                                                    <p class="text-[9px] text-slate-500 font-medium">${formatDate(r.Start)} - ${formatDate(r.End)}</p>
+                                                </td>
+                                                <td class="px-6 py-5">
+                                                    <span class="px-3 py-1 rounded-full text-[8px] font-black uppercase ${r.Status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : (r.Status === 'REJECTED' ? 'bg-red-100 text-red-600' : (r.Status === 'CANCELLED' ? 'bg-slate-100 text-slate-400' : 'bg-amber-100 text-amber-600'))}">${r.Status}</span>
+                                                </td>
+                                                <td class="px-8 py-5 text-right flex justify-end items-center gap-3">
+                                                    ${(currentUser.role === ROLES.HRD) ? `
+                                                        <button onclick="deleteRequest('${r.ID}')" class="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm" title="Hapus Permanen">
+                                                            <i class="fas fa-trash-alt text-[10px]"></i>
+                                                        </button>
+                                                    ` : ''}
+                                                    ${currentUser.role === ROLES.STAFF && !['APPROVED','REJECTED','CANCELLED'].includes(r.Status) ? `
+                                                        <button onclick="cancelRequest('${r.ID}')" class="text-red-500 text-[10px] font-bold uppercase hover:underline"><i class="fas fa-times-circle"></i> Batal</button>
+                                                    ` : ''}
+                                                    <button onclick="showDetail('${r.ID}')" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm">
+                                                        <i class="fas fa-eye text-[10px]"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>`;
+                });
+            }
+            historyHTML += `</div>`;
+            $('main-content').innerHTML = historyHTML;
+        }
+
+        async function deleteRequest(id) {
+            if(!confirm("Peringatan: Menghapus riwayat akan menghapus data permanen. Jika status sudah 'APPROVED', kuota akan dikembalikan otomatis ke karyawan. Lanjutkan?")) return;
+            
+            const r = leaveRequests.find(req => req.ID.toString() === id.toString());
+            if (!r) return;
+
+            showToast('Menghapus riwayat...', 'success');
+
+            // 1. Revert Quota if it was APPROVED
+            if (r.Status === 'APPROVED') {
+                const u = users.find(usr => usr.Name === r.Name);
+                if (u) {
+                    const dur = parseInt(r.Duration) || 0;
+                    if (r.Type === 'Annual Leave') {
+                        u.AnnualQuota = (parseInt(u.AnnualQuota) || 0) + dur;
+                    } else {
+                        u.SpecialQuota = (parseInt(u.SpecialQuota) || 0) + dur;
+                    }
+                    u.id = u.ID;
+                    await callGAS('saveUser', u);
+                }
+            }
+
+            // 2. Delete Request Row
+            const res = await callGAS('deleteRequest', { id: id });
+            
+            if (res.status === 'success') {
+                showToast('Riwayat dan Kuota Berhasil Diperbarui!');
+                setTimeout(async () => { await fetchFromSheet(); loadHistory(); }, 800);
+            } else {
+                showToast('Gagal menghapus data dari Sheets.', 'error');
+            }
         }
 
         function loadApprovalList() {
@@ -535,7 +673,6 @@
             r.Status = isApproveAction ? (isHeadDecision ? 'HRD_APPROVAL' : 'APPROVED') : 'REJECTED';
             if (isHeadDecision) r.HeadNote = note; else r.HRDNote = note;
             
-            // Bersihkan properti tanggal agar tetap string YYYY-MM-DD
             r.Start = toISODateString(r.Start);
             r.End = toISODateString(r.End);
             r.SubmitDate = toISODateString(r.SubmitDate || new Date());
@@ -549,17 +686,14 @@
             
             // WHATSAPP NOTIFICATIONS
             if (isHeadDecision) {
-                // Notifikasi dari Head Dept ke User
                 const userMsg = `*UPDATE STATUS CUTI*\n\nYth. ${r.Name},\n\nPengajuan cuti Anda tanggal ${formatDate(r.SubmitDate)} ${isApproveAction ? 'telah *DISETUJUI*' : '*TIDAK DISETUJUI*'} oleh ${currentUser.data.Position}.\n\n*Detail Pengajuan:*\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Durasi: ${r.Duration} Hari\n- Alasan: ${r.Reason}\n\n${isApproveAction ? 'Silakan cek detail di aplikasi.' : `Silakan cek detail di aplikasi atau langsung menghubungi ${currentUser.data.Position}.`}\n\nTerima kasih.`;
                 if (r.Phone) triggerWhatsApp(r.Phone, userMsg);
 
-                // Notifikasi dari Head Dept ke HRD jika Setuju
                 if (isApproveAction) {
                     const hrdMsg = `*NOTIFIKASI PENGAJUAN CUTI*\n\nYth. HRD Transwisata,\n\nBerikut ini pengajuan cuti dari anggota kami atas nama *${r.Name}* (${r.Position}) telah saya *SETUJUI*\n\n*Detail Pengajuan:*\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Durasi: ${r.Duration} Hari\n- Alasan: ${r.Reason}\n\nMohon diproses lebih lanjut.\n\nSilakan login melalui portal *ECrew Transwisata* untuk akses *ECrew Leaves System* dan memproses pengajuan ini.\n\nTerima kasih.`;
                     if (hrdProfile.phone) triggerWhatsApp(hrdProfile.phone, hrdMsg);
                 }
             } else if (isHRDDecision) {
-                // Notifikasi dari HRD ke User
                 const userMsg = `*UPDATE STATUS CUTI*\n\nYth. ${r.Name},\n\nPengajuan cuti Anda tanggal ${formatDate(r.SubmitDate)} ${isApproveAction ? 'telah *DISETUJUI*' : '*TIDAK DISETUJUI*'} oleh HRD Transwisata.\n\n*Detail Pengajuan:*\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Durasi: ${r.Duration} Hari\n- Alasan: ${r.Reason}\n\n${isApproveAction ? 'Silakan cek detail di aplikasi.' : 'Silakan cek detail di aplikasi atau langsung menghubungi HRD Transwisata.'}\n\nTerima kasih.`;
                 if (r.Phone) triggerWhatsApp(r.Phone, userMsg);
             }
@@ -585,7 +719,6 @@
             const oldStatus = r.Status;
             r.Status = 'CANCELLED'; 
             
-            // Bersihkan properti tanggal
             r.Start = toISODateString(r.Start);
             r.End = toISODateString(r.End);
             r.ID = r.ID;
@@ -614,11 +747,9 @@
             $('main-content').innerHTML = `<div class="animate-fade-in max-w-xl mx-auto"><div class="glass-card p-10 rounded-[2.5rem] shadow-xl space-y-6"><h3 class="text-xl font-black uppercase text-blue-900 border-b pb-4">Profil HR Dept</h3><form id="hr-profile-form" class="space-y-4"><div><label class="text-[10px] font-black uppercase text-slate-400">Nama Manager</label><input type="text" id="hr-p-name" value="${hrdProfile.name}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div><div><label class="text-[10px] font-black uppercase text-slate-400">Email Notifikasi</label><input type="email" id="hr-p-email" value="${hrdProfile.email}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div><div><label class="text-[10px] font-black uppercase text-slate-400">WhatsApp</label><input type="text" id="hr-p-phone" value="${hrdProfile.phone}" placeholder="Contoh: 08123456789" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"><p class="text-[9px] text-slate-400 mt-1 italic font-medium">Bisa diawali 08, 62, atau +62. Sistem akan menyesuaikan otomatis.</p></div><button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-xs shadow-lg mt-4">Simpan Profil</button></form></div></div>`;
             $('hr-profile-form').addEventListener('submit', async (e) => { 
                 e.preventDefault(); 
-                hrdProfile = { 
-                    name: $('hr-p-name').value, 
-                    email: $('hr-p-email').value, 
-                    phone: $('hr-p-phone').value.replace(/[^0-9+]/g, '') // Simpan nomor bersih
-                }; 
+                hrdProfile.name = $('hr-p-name').value;
+                hrdProfile.email = $('hr-p-email').value;
+                hrdProfile.phone = $('hr-p-phone').value.replace(/[^0-9+]/g, '');
                 await callGAS('saveProfile', hrdProfile); 
                 showToast('Profil Diperbarui!'); 
             });
@@ -652,53 +783,29 @@
         $('leave-request-form').addEventListener('submit', async (e) => {
             e.preventDefault(); 
             const btn = $('r-submit-btn'); if (btn.disabled) return;
-            
             const headSelect = $('r-target-head');
             if (!headSelect.value) { showToast('Pilih Head Dept terlebih dahulu!', 'error'); return; }
-            
             const headOption = headSelect.options[headSelect.selectedIndex];
             const headPosition = headOption.getAttribute('data-pos') || "Head Dept";
             const hInfo = heads.find(h => h.ID.toString() === headSelect.value.toString());
-            
             const txt = btn.innerText; btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Mengirim...`; 
             showToast('Sedang memproses...', 'success');
-            
-            // Pastikan data user ada
             if (!currentUser || !currentUser.data) { showToast('Sesi error, silakan login ulang', 'error'); return; }
-
             const payload = { 
                 ID: 'TWA-' + Math.floor(1000 + Math.random()*9000), 
-                Name: currentUser.name, 
-                Division: currentUser.data.Division || "-", 
-                Position: currentUser.data.Position || "-", 
-                TargetHeadId: headSelect.value, 
-                Type: $('r-type').value, 
-                Duration: parseInt($('r-duration-view').innerText) || 0, 
-                Start: toISODateString($('r-start').value), 
-                End: toISODateString($('r-end').value), 
-                Status: 'HEAD_DEPT_REVIEW', 
-                Reason: $('r-reason').value, 
-                Handover: $('r-handover').value, 
-                Phone: currentUser.data.Phone || "",
-                SubmitDate: toISODateString(new Date())
+                Name: currentUser.name, Division: currentUser.data.Division || "-", Position: currentUser.data.Position || "-", TargetHeadId: headSelect.value, 
+                Type: $('r-type').value, Duration: parseInt($('r-duration-view').innerText) || 0, Start: toISODateString($('r-start').value), End: toISODateString($('r-end').value), 
+                Status: 'HEAD_DEPT_REVIEW', Reason: $('r-reason').value, Handover: $('r-handover').value, Phone: currentUser.data.Phone || "", SubmitDate: toISODateString(new Date())
             };
-            
             try {
                 const res = await callGAS('saveRequest', payload);
                 if (res.status === 'success') { 
                     const waMsg = `*NOTIFIKASI PENGAJUAN CUTI*\n\nYth. ${headPosition},\n\nAda pengajuan cuti baru dari *${currentUser.name}* (${currentUser.data.Position}).\n\n*Detail Pengajuan:*\n- Tipe: ${payload.Type}\n- Periode: ${formatDate(payload.Start)} s/d ${formatDate(payload.End)}\n- Durasi: ${payload.Duration} Hari\n- Alasan: ${payload.Reason}\n\nSilakan login melalui portal *ECrew Transwisata* untuk akses *ECrew Leaves System* dan memproses pengajuan ini.\n\nTerima kasih.`;
                     if (hInfo?.Phone) triggerWhatsApp(hInfo.Phone, waMsg); 
-                    
-                    showToast('Berhasil Dikirim!'); 
-                    closeRequestModal(); 
+                    showToast('Berhasil Dikirim!'); closeRequestModal(); 
                     setTimeout(async () => { await fetchFromSheet(); loadDashboard(); }, 1200); 
-                } else {
-                    throw new Error(res.message || "Gagal menyimpan di database");
-                }
-            } catch (error) {
-                showToast('Gagal mengirim: ' + error.message, 'error'); 
-                btn.disabled = false; btn.innerText = txt; 
-            }
+                } else { throw new Error(res.message || "Gagal menyimpan di database"); }
+            } catch (error) { showToast('Gagal mengirim: ' + error.message, 'error'); btn.disabled = false; btn.innerText = txt; }
         });
 
         function showDetail(id) {
@@ -717,19 +824,10 @@
         }
         function showToast(msg, type = 'success') { $('toast-msg').innerText = msg; $('toast-icon').className = `w-8 h-8 rounded-full flex items-center justify-center text-sm ${type === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`; $('toast').classList.remove('hidden'); setTimeout(() => $('toast').classList.add('hidden'), 3000); }
         
-        // Fungsi pemicu WhatsApp yang lebih cerdas dan robust
         function triggerWhatsApp(p, m) { 
             if (!p) return;
-            let c = String(p).replace(/[^0-9]/g, ''); // Ambil hanya angka
-            
-            // Logika konversi ke format internasional
-            if (c.startsWith('0')) {
-                c = '62' + c.substring(1); // 08... menjadi 628...
-            } else if (c.startsWith('8')) {
-                c = '62' + c; // 8... menjadi 628...
-            }
-            
-            // Buka link wa.me resmi
+            let c = String(p).replace(/[^0-9]/g, '');
+            if (c.startsWith('0')) { c = '62' + c.substring(1); } else if (c.startsWith('8')) { c = '62' + c; }
             window.open(`https://wa.me/${c}?text=${encodeURIComponent(m)}`, '_blank'); 
         }
 
