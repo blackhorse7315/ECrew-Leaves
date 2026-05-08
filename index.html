@@ -435,7 +435,7 @@
             $('main-content').innerHTML = `
                 <div class="animate-fade-in space-y-8">
                     <div class="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-                        <div><h3 class="text-xl font-black text-slate-800 uppercase">Manajemen Karyawan</h3><p class="text-xs text-slate-500">Kelola data staf dan kuota cuti</p></div>
+                        <div><h3 class="text-xl font-black text-slate-800 uppercase">Manajemen Karyawan</h3><p class="text-xs text-slate-500">Kelola data staf dan saldo sisa cuti</p></div>
                         <button onclick="openEditModal('staff')" class="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase shadow-lg flex items-center gap-2"><i class="fas fa-plus"></i> Tambah Karyawan</button>
                     </div>
                     <div class="glass-card p-6 md:p-8 rounded-[2.5rem] border-2 border-blue-100 bg-blue-50/30">
@@ -444,11 +444,11 @@
                         <button onclick="handleBulkParse()" class="w-full py-3 bg-blue-900 text-white rounded-2xl font-black uppercase text-xs">Proses Bulk</button>
                     </div>
                     <div class="glass-card rounded-[2rem] overflow-x-auto shadow-sm">
-                        <table class="w-full text-left min-w-[800px]"><thead class="bg-slate-50 text-[10px] font-black uppercase border-b"><tr><th class="px-8 py-5">Karyawan</th><th class="px-6 py-5">Jabatan</th><th class="px-6 py-5 text-center">Annual Bal.</th><th class="px-6 py-5 text-center">Special Bal.</th><th class="px-8 py-5 text-right">Info</th></tr></thead>
+                        <table class="w-full text-left min-w-[800px]"><thead class="bg-slate-50 text-[10px] font-black uppercase border-b"><tr><th class="px-8 py-5">Karyawan</th><th class="px-6 py-5">Jabatan</th><th class="px-6 py-5 text-center">Annual Balance</th><th class="px-6 py-5 text-center">Special Balance</th><th class="px-8 py-5 text-right">Info</th></tr></thead>
                         <tbody class="divide-y divide-slate-50">${users.map(u => {
-                            const usedAnnual = leaveRequests.filter(r => r.Name === u.Name && r.Status === 'APPROVED' && r.Type === 'Annual Leave').reduce((sum, r) => sum + (parseInt(r.Duration) || 0), 0);
-                            const usedSpecial = leaveRequests.filter(r => r.Name === u.Name && r.Status === 'APPROVED' && (r.Type === 'Special Leave' || SPECIAL_LEAVE_RULES[r.Type])).reduce((sum, r) => sum + (parseInt(r.Duration) || 0), 0);
-                            return `<tr onclick="showUserCard('${u.ID}', 'staff')" class="hover:bg-slate-50 cursor-pointer transition-all group"><td class="px-8 py-5"><p class="text-xs font-black group-hover:text-blue-600 transition-colors">${u.Name}</p><p class="text-[10px] text-slate-400">${u.Email}</p></td><td class="px-6 py-5"><p class="text-[10px] md:text-xs font-bold text-slate-600">${u.Division}</p><p class="text-[9px] text-slate-400">${u.Position}</p></td><td class="px-6 py-5 text-center"><span class="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 font-black text-xs">${(parseInt(u.AnnualQuota)||0)-usedAnnual}</span></td><td class="px-6 py-5 text-center"><span class="px-3 py-1 rounded-lg bg-purple-50 text-purple-700 font-black text-xs">${(parseInt(u.SpecialQuota)||0)-usedSpecial}</span></td><td class="px-8 py-5 text-right text-slate-300"><i class="fas fa-chevron-right text-xs"></i></td></tr>`}).join('')}</tbody></table>
+                            // Saldo sekarang ditampilkan langsung dari nilai kuota di database
+                            // Karena setiap approval langsung memotong angka di database
+                            return `<tr onclick="showUserCard('${u.ID}', 'staff')" class="hover:bg-slate-50 cursor-pointer transition-all group"><td class="px-8 py-5"><p class="text-xs font-black group-hover:text-blue-600 transition-colors">${u.Name}</p><p class="text-[10px] text-slate-400">${u.Email}</p></td><td class="px-6 py-5"><p class="text-[10px] md:text-xs font-bold text-slate-600">${u.Division}</p><p class="text-[9px] text-slate-400">${u.Position}</p></td><td class="px-6 py-5 text-center"><span class="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 font-black text-xs">${parseInt(u.AnnualQuota)||0}</span></td><td class="px-6 py-5 text-center"><span class="px-3 py-1 rounded-lg bg-purple-50 text-purple-700 font-black text-xs">${parseInt(u.SpecialQuota)||0}</span></td><td class="px-8 py-5 text-right text-slate-300"><i class="fas fa-chevron-right text-xs"></i></td></tr>`}).join('')}</tbody></table>
                     </div>
                 </div>`;
         }
@@ -477,7 +477,7 @@
             $('edit-form-subtitle').innerText = type === 'staff' ? 'Karyawan / Staf' : 'Head of Department';
             const container = $('dynamic-fields-container'); container.innerHTML = '';
             const fields = [{ id: 'f-name', label: 'Nama Lengkap', type: 'text', value: data?.Name || '', full: true }, { id: 'f-division', label: 'Divisi', type: 'select', options: DIVISIONS, value: data?.Division || '' }, { id: 'f-position', label: 'Jabatan', type: 'select', options: type === 'staff' ? POSITIONS : HEAD_POSITIONS, value: data?.Position || '' }, { id: 'f-email', label: 'Email', type: 'email', value: data?.Email || '' }, { id: 'f-phone', label: 'WhatsApp', type: 'text', value: data?.Phone || '' }];
-            if (type === 'staff') { fields.push({ id: 'f-annual', label: 'Annual Quota', type: 'number', value: data?.AnnualQuota || 12 }, { id: 'f-special', label: 'Special Quota', type: 'number', value: data?.SpecialQuota || 40 }); }
+            if (type === 'staff') { fields.push({ id: 'f-annual', label: 'Annual Balance (Sisa Saldo)', type: 'number', value: data?.AnnualQuota || 0 }, { id: 'f-special', label: 'Special Balance (Sisa Saldo)', type: 'number', value: data?.SpecialQuota || 0 }); }
             fields.push({ id: 'f-user', label: 'Username', type: 'text', value: data?.Username || '' }, { id: 'f-pass', label: 'Password', type: 'text', value: data?.Password || '' });
             fields.forEach(f => {
                 let html = `<div class="${f.full ? 'md:col-span-2' : ''} space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">${f.label}</label>`;
@@ -537,8 +537,10 @@
 
         function loadDashboard() {
             if (currentUser.role === ROLES.STAFF) {
-                const my = leaveRequests.filter(r => r.Name === currentUser.name); const used = my.filter(r => r.Status === 'APPROVED').reduce((acc, r) => acc + (parseInt(r.Duration) || 0), 0);
-                $('main-content').innerHTML = `<div class="space-y-8 animate-fade-in"><div class="flex justify-between items-center"><h3 class="font-bold text-slate-800">Ringkasan Cuti</h3><button onclick="openRequestModal()" class="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase shadow-lg">Pengajuan Baru</button></div><div class="grid grid-cols-2 md:grid-cols-4 gap-6"><div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Kuota Tahunan</p><h3 class="text-3xl font-black text-blue-900">${currentUser.data.AnnualQuota || 0}</h3></div><div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Kuota Spesial</p><h3 class="text-3xl font-black text-blue-900">${currentUser.data.SpecialQuota || 0}</h3></div><div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Terpakai</p><h3 class="text-3xl font-black text-emerald-600">${used}</h3></div><div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Pending</p><h3 class="text-3xl font-black text-amber-500">${my.filter(r => !['APPROVED','REJECTED','CANCELLED'].includes(r.Status)).length}</h3></div></div></div>`;
+                const my = leaveRequests.filter(r => r.Name === currentUser.name); 
+                // Karena saldo di database sudah berkurang, kita tidak menghitung sisa dari used cuti lagi
+                // Langsung ambil angka AnnualQuota dari database user
+                $('main-content').innerHTML = `<div class="space-y-8 animate-fade-in"><div class="flex justify-between items-center"><h3 class="font-bold text-slate-800">Ringkasan Cuti</h3><button onclick="openRequestModal()" class="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase shadow-lg">Pengajuan Baru</button></div><div class="grid grid-cols-2 md:grid-cols-4 gap-6"><div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Sisa Annual</p><h3 class="text-3xl font-black text-blue-900">${currentUser.data.AnnualQuota || 0}</h3></div><div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Sisa Spesial</p><h3 class="text-3xl font-black text-blue-900">${currentUser.data.SpecialQuota || 0}</h3></div><div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Riwayat Approved</p><h3 class="text-3xl font-black text-emerald-600">${my.filter(r => r.Status === 'APPROVED').length}</h3></div><div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Pending</p><h3 class="text-3xl font-black text-amber-500">${my.filter(r => !['APPROVED','REJECTED','CANCELLED'].includes(r.Status)).length}</h3></div></div></div>`;
             } else {
                 const pending = leaveRequests.filter(r => (currentUser.role === ROLES.HEAD && r.Status === 'HEAD_DEPT_REVIEW' && r.TargetHeadId === currentUser.data.ID) || (currentUser.role === ROLES.HRD && r.Status === 'HRD_APPROVAL'));
                 $('main-content').innerHTML = `<div class="glass-card p-8 rounded-[2rem] bg-amber-50 border-amber-100"><h3 class="text-4xl font-black text-amber-700">${pending.length} Menunggu</h3><p class="text-xs uppercase font-bold text-amber-500 mt-1">Antrean Persetujuan Baru</p></div>`;
@@ -557,7 +559,6 @@
 
         function handleApprovalAction(id, approve) { pendingApprovalId = id; isApproveAction = approve; $('note-title').innerText = approve ? 'Setujui' : 'Tolak'; $('modal-note').classList.remove('hidden'); $('modal-note').classList.add('flex'); }
         
-        // PERBAIKAN: Fungsi approval yang dinamis memperbarui kuota di Google Sheet
         async function confirmApprovalWithNote() {
             const note = $('note-text').value.trim(); 
             const r = leaveRequests.find(req => req.ID === pendingApprovalId); 
@@ -570,13 +571,12 @@
             if (currentUser.role === ROLES.HEAD) r.HeadNote = note; else r.HRDNote = note;
             
             closeNoteModal(); 
-            showToast('Memproses & Mengupdate Saldo...', 'success'); 
+            showToast('Memproses & Mengupdate Saldo Permanen...', 'success'); 
             loadApprovalList(); 
             
-            // Simpan perubahan status cuti
             await callGAS('saveRequest', r);
             
-            // Jika disetujui (Status APPROVED), kurangi kuota karyawan di Google Sheet secara permanen
+            // LOGIKA DINAMIS: Update sisa saldo di baris karyawan pada Google Sheet
             if (r.Status === 'APPROVED') {
                 const u = users.find(usr => usr.Name === r.Name);
                 if (u) {
@@ -584,20 +584,19 @@
                     if (r.Type === 'Annual Leave') {
                         u.AnnualQuota = Math.max(0, (parseInt(u.AnnualQuota) || 0) - dur);
                     } else {
-                        // Untuk semua tipe cuti selain Annual Leave, masuk ke kuota Special
                         u.SpecialQuota = Math.max(0, (parseInt(u.SpecialQuota) || 0) - dur);
                     }
-                    // Update baris user di Google Sheet agar angka 12/40 nya berubah
+                    // Kirim pembaruan baris user ke Google Sheet
+                    // payload ini akan menimpa kolom Annual/Special dengan saldo baru (misal 5)
                     await callGAS('saveUser', u);
                 }
             }
             
-            setTimeout(async () => { await fetchFromSheet(); switchTab('approval'); showToast('Keputusan & Saldo Disimpan!'); }, 800);
+            setTimeout(async () => { await fetchFromSheet(); switchTab('approval'); showToast('Keputusan & Saldo Sisa Disimpan ke Database!'); }, 800);
         }
 
-        // PERBAIKAN: Fungsi batal yang mengembalikan kuota ke Google Sheet
         async function cancelRequest(id) { 
-            if(!confirm("Batalkan pengajuan?")) return; 
+            if(!confirm("Batalkan pengajuan ini? Saldo akan dikembalikan otomatis.")) return; 
             const r = leaveRequests.find(req => req.ID === id); 
             if (!r) return; 
             
@@ -605,10 +604,10 @@
             r.id = r.ID; 
             r.Status = 'CANCELLED'; 
             
-            showToast('Membatalkan & Mengembalikan Saldo...', 'success'); 
+            showToast('Membatalkan & Memulihkan Saldo...', 'success'); 
             await callGAS('saveRequest', r); 
 
-            // Jika cuti yang dibatalkan sudah berstatus APPROVED, kembalikan saldonya ke Google Sheet
+            // Jika cuti yang dibatalkan sudah APPROVED, pulihkan saldonya di database
             if (oldStatus === 'APPROVED') {
                 const u = users.find(usr => usr.Name === r.Name);
                 if (u) {
@@ -622,7 +621,7 @@
                 }
             }
 
-            setTimeout(async () => { await fetchFromSheet(); loadHistory(); showToast('Cuti Dibatalkan & Saldo Dikembalikan!'); }, 800); 
+            setTimeout(async () => { await fetchFromSheet(); loadHistory(); showToast('Cuti Dibatalkan & Saldo Pulih di Database!'); }, 800); 
         }
 
         function closeNoteModal() { $('note-text').value = ''; $('modal-note').classList.add('hidden'); $('modal-note').classList.remove('flex'); }
