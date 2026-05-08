@@ -40,6 +40,7 @@
 </head>
 <body class="text-slate-800">
 
+    <!-- STATUS SYNC -->
     <div id="global-loader" class="fixed bottom-6 right-6 z-[300] bg-white/90 backdrop-blur-md px-5 py-4 rounded-[1.5rem] shadow-2xl border border-blue-100 flex items-center gap-4 animate-fade-in">
         <div class="loader w-6 h-6 border-2 border-slate-100 border-top-blue-600"></div>
         <div>
@@ -48,6 +49,7 @@
         </div>
     </div>
 
+    <!-- LOGIN PAGE -->
     <div id="login-page" class="fixed inset-0 z-[100] aviation-gradient flex items-center justify-center p-4">
         <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden animate-fade-in">
             <div class="p-10">
@@ -67,6 +69,7 @@
         </div>
     </div>
 
+    <!-- MAIN APP WRAPPER -->
     <div id="app-wrapper" class="hidden flex h-screen overflow-hidden">
         <aside class="w-64 aviation-gradient text-white hidden md:flex flex-col shadow-2xl">
             <div class="p-6">
@@ -123,7 +126,7 @@
         </main>
     </div>
 
-    <!-- MODAL EDIT FORM -->
+    <!-- MODALS -->
     <div id="modal-edit-form" class="fixed inset-0 z-[190] modal-overlay hidden items-center justify-center p-4">
         <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
             <div id="edit-form-header" class="p-6 md:p-8 aviation-gradient text-white flex justify-between items-center shrink-0">
@@ -429,7 +432,6 @@
             const type = currentEditType;
             showToast('Sedang menyimpan perubahan...', 'success');
             
-            // PERBAIKAN: Gunakan kunci "ID" (huruf besar) agar sesuai dengan logika backend yang mencari ID
             let payload = { ID: (type === 'staff' ? editingUserId : editingHeadId) || (type === 'staff' ? 'USR-' : 'HEAD-') + Math.floor(1000 + Math.random()*9000) };
             const inputs = e.target.querySelectorAll('input, select');
             
@@ -513,10 +515,9 @@
             const r = leaveRequests.find(req => req.ID.toString() === pendingApprovalId.toString()); 
             if (!r) return;
             
-            // PERBAIKAN: Gunakan kunci "ID" yang konsisten
-            r.ID = r.ID; 
             r.Status = isApproveAction ? (currentUser.role === ROLES.HEAD ? 'HRD_APPROVAL' : 'APPROVED') : 'REJECTED';
             if (currentUser.role === ROLES.HEAD) r.HeadNote = note; else r.HRDNote = note;
+            r.id = r.ID; // Ensure ID property matches for handleSave
             
             closeNoteModal(); 
             showToast('Memproses...', 'success'); 
@@ -524,17 +525,30 @@
             
             await callGAS('saveRequest', r);
             
+            // WHATSAPP NOTIFICATIONS
+            if (currentUser.role === ROLES.HEAD) {
+                // Notifikasi ke User (Staff)
+                const decisionText = isApproveAction ? 'DISETUJUI' : 'TIDAK DISETUJUI';
+                const footerText = isApproveAction ? 'Silakan cek detail di aplikasi.' : `Silakan cek detail di aplikasi atau langsung menghubungi ${currentUser.data.Position}.`;
+                
+                const userMsg = `*UPDATE STATUS CUTI*\n\nYth. ${r.Name},\n\nPengajuan cuti Anda tanggal ${formatDate(r.SubmitDate || new Date())} ${isApproveAction ? 'telah *DISETUJUI*' : '*TIDAK DISETUJUI*'} oleh ${currentUser.data.Position}.\n\n*Detail Pengajuan:*\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Durasi: ${r.Duration} Hari\n- Alasan: ${r.Reason}\n\n${footerText}\n\nTerima kasih.`;
+                
+                if (r.Phone) triggerWhatsApp(r.Phone, userMsg);
+
+                // Notifikasi ke HRD jika Setuju
+                if (isApproveAction) {
+                    const hrdMsg = `*NOTIFIKASI PENGAJUAN CUTI*\n\nYth. HRD Transwisata,\n\nBerikut ini pengajuan cuti dari anggota kami atas nama *${r.Name}* (${r.Position}) telah saya *SETUJUI*\n\n*Detail Pengajuan:*\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Durasi: ${r.Duration} Hari\n- Alasan: ${r.Reason}\n\nMohon diproses lebih lanjut.\n\nSilakan login melalui portal *ECrew Transwisata* untuk akses *ECrew Leaves System* dan memproses pengajuan ini.\n\nTerima kasih.`;
+                    if (hrdProfile.phone) triggerWhatsApp(hrdProfile.phone, hrdMsg);
+                }
+            }
+            
             if (r.Status === 'APPROVED') {
                 const u = users.find(usr => usr.Name === r.Name);
                 if (u) {
                     const dur = parseInt(r.Duration) || 0;
-                    if (r.Type === 'Annual Leave') {
-                        u.AnnualQuota = Math.max(0, (parseInt(u.AnnualQuota) || 0) - dur);
-                    } else {
-                        u.SpecialQuota = Math.max(0, (parseInt(u.SpecialQuota) || 0) - dur);
-                    }
-                    // PERBAIKAN: Gunakan ID huruf besar agar sinkron dengan skrip backend
-                    u.ID = u.ID;
+                    if (r.Type === 'Annual Leave') u.AnnualQuota = Math.max(0, (parseInt(u.AnnualQuota) || 0) - dur);
+                    else u.SpecialQuota = Math.max(0, (parseInt(u.SpecialQuota) || 0) - dur);
+                    u.id = u.ID;
                     await callGAS('saveUser', u);
                 }
             }
@@ -546,25 +560,17 @@
             if(!confirm("Batalkan pengajuan ini? Saldo akan dikembalikan otomatis.")) return; 
             const r = leaveRequests.find(req => req.ID.toString() === id.toString()); 
             if (!r) return; 
-            
             const oldStatus = r.Status;
-            r.ID = r.ID; 
-            r.Status = 'CANCELLED'; 
-            
+            r.id = r.ID; r.Status = 'CANCELLED'; 
             showToast('Membatalkan...', 'success'); 
             await callGAS('saveRequest', r); 
-
             if (oldStatus === 'APPROVED') {
                 const u = users.find(usr => usr.Name === r.Name);
                 if (u) {
                     const dur = parseInt(r.Duration) || 0;
-                    if (r.Type === 'Annual Leave') {
-                        u.AnnualQuota = (parseInt(u.AnnualQuota) || 0) + dur;
-                    } else {
-                        u.SpecialQuota = (parseInt(u.SpecialQuota) || 0) + dur;
-                    }
-                    u.ID = u.ID;
-                    await callGAS('saveUser', u);
+                    if (r.Type === 'Annual Leave') u.AnnualQuota = (parseInt(u.AnnualQuota) || 0) + dur;
+                    else u.SpecialQuota = (parseInt(u.SpecialQuota) || 0) + dur;
+                    u.id = u.ID; await callGAS('saveUser', u);
                 }
             }
             setTimeout(async () => { await fetchFromSheet(); loadHistory(); showToast('Saldo Dipulihkan!'); }, 800); 
@@ -579,15 +585,9 @@
 
         function openRequestModal() {
             const d = currentUser.data || { Division: '-', Position: '-' }; $('r-division').value = d.Division; $('r-position').value = d.Position;
-            const t = $('r-target-head'); t.innerHTML = '<option value="">Pilih Head Dept</option>'; heads.forEach(h => t.innerHTML += `<option value="${h.ID}">${h.Position} (${h.Name})</option>`);
+            const t = $('r-target-head'); t.innerHTML = '<option value="">Pilih Head Dept</option>'; heads.forEach(h => t.innerHTML += `<option value="${h.ID}" data-pos="${h.Position}">${h.Position} (${h.Name})</option>`);
             const h = $('r-handover'); h.innerHTML = '<option value="">Pilih Rekan</option>'; users.forEach(u => { if(u.Name !== currentUser.name) h.innerHTML += `<option value="${u.Name}">${u.Name}</option>`; });
-            $('r-duration-view').innerText = "0 Hari";
-            $('r-quota-warning').classList.add('hidden');
-            $('r-duration-view').classList.remove('text-red-500');
-            $('r-duration-view').classList.add('text-blue-700');
-            $('r-submit-btn').disabled = false;
-            $('r-submit-btn').classList.remove('opacity-50', 'cursor-not-allowed');
-            $('modal-request').classList.remove('hidden'); $('modal-request').classList.add('flex');
+            $('r-duration-view').innerText = "0 Hari"; $('r-quota-warning').classList.add('hidden'); $('r-duration-view').classList.remove('text-red-500'); $('r-duration-view').classList.add('text-blue-700'); $('r-submit-btn').disabled = false; $('r-submit-btn').classList.remove('opacity-50', 'cursor-not-allowed'); $('modal-request').classList.remove('hidden'); $('modal-request').classList.add('flex');
         }
         function closeRequestModal() { $('modal-request').classList.add('hidden'); $('modal-request').classList.remove('flex'); }
 
@@ -597,18 +597,11 @@
 
         function updateDur() {
             const s = $('r-start').value; const e = $('r-end').value; const type = $('r-type').value;
-            let duration = 0;
-            if (SPECIAL_LEAVE_RULES[type]) duration = SPECIAL_LEAVE_RULES[type];
-            else if (s && e) { const start = new Date(s); const end = new Date(e); duration = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1; if (duration < 0) duration = 0; }
+            let duration = 0; if (SPECIAL_LEAVE_RULES[type]) duration = SPECIAL_LEAVE_RULES[type]; else if (s && e) { const start = new Date(s); const end = new Date(e); duration = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1; if (duration < 0) duration = 0; }
             $('r-duration-view').innerText = duration + " Hari"; 
-
             if (currentUser && currentUser.data && duration > 0 && type !== "") {
-                const annualQuota = parseInt(currentUser.data.AnnualQuota) || 0;
-                const specialQuota = parseInt(currentUser.data.SpecialQuota) || 0;
-                let isExceeding = false;
-                if (type === 'Annual Leave') { if (duration > annualQuota) isExceeding = true; }
-                else { if (duration > specialQuota) isExceeding = true; }
-
+                const annualQuota = parseInt(currentUser.data.AnnualQuota) || 0; const specialQuota = parseInt(currentUser.data.SpecialQuota) || 0;
+                let isExceeding = false; if (type === 'Annual Leave') isExceeding = duration > annualQuota; else isExceeding = duration > specialQuota;
                 const warning = $('r-quota-warning'); const view = $('r-duration-view'); const btn = $('r-submit-btn');
                 if (isExceeding) { warning.classList.remove('hidden'); view.classList.replace('text-blue-700', 'text-red-500'); btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); }
                 else { warning.classList.add('hidden'); view.classList.replace('text-red-500', 'text-blue-700'); btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); }
@@ -617,12 +610,32 @@
 
         $('leave-request-form').addEventListener('submit', async (e) => {
             e.preventDefault(); const btn = $('r-submit-btn'); if (btn.disabled) return;
+            const headSelect = $('r-target-head');
+            const headPosition = headSelect.options[headSelect.selectedIndex].getAttribute('data-pos');
+            const hInfo = heads.find(h => h.ID.toString() === headSelect.value.toString());
+            
             const txt = btn.innerText; btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Mengirim...`; 
             showToast('Sedang memproses...', 'success');
-            const hInfo = heads.find(h => h.ID.toString() === $('r-target-head').value.toString());
-            const payload = { ID: 'TWA-' + Math.floor(1000 + Math.random()*9000), Name: currentUser.name, Division: currentUser.data.Division, Position: currentUser.data.Position, TargetHeadId: $('r-target-head').value, Type: $('r-type').value, Duration: parseInt($('r-duration-view').innerText), Start: $('r-start').value, End: $('r-end').value, Status: 'HEAD_DEPT_REVIEW', Reason: $('r-reason').value, Handover: $('r-handover').value, Phone: currentUser.data.Phone };
+            
+            const payload = { 
+                ID: 'TWA-' + Math.floor(1000 + Math.random()*9000), 
+                Name: currentUser.name, Division: currentUser.data.Division, Position: currentUser.data.Position, TargetHeadId: headSelect.value, 
+                Type: $('r-type').value, Duration: parseInt($('r-duration-view').innerText), Start: $('r-start').value, End: $('r-end').value, 
+                Status: 'HEAD_DEPT_REVIEW', Reason: $('r-reason').value, Handover: $('r-handover').value, Phone: currentUser.data.Phone,
+                SubmitDate: new Date().toISOString()
+            };
+            
             const res = await callGAS('saveRequest', payload);
-            if (res.status === 'success') { if (hInfo?.Phone) triggerWhatsApp(hInfo.Phone, `Ada pengajuan cuti baru dari ${currentUser.name}.`); showToast('Berhasil Dikirim!'); closeRequestModal(); setTimeout(async () => { await fetchFromSheet(); loadDashboard(); }, 1200); }
+            if (res.status === 'success') { 
+                // WHATSAPP USER TO HEAD
+                const waMsg = `*NOTIFIKASI PENGAJUAN CUTI*\n\nYth. ${headPosition},\n\nAda pengajuan cuti baru dari *${currentUser.name}* (${currentUser.data.Position}).\n\n*Detail Pengajuan:*\n- Tipe: ${payload.Type}\n- Periode: ${formatDate(payload.Start)} s/d ${formatDate(payload.End)}\n- Durasi: ${payload.Duration} Hari\n- Alasan: ${payload.Reason}\n\nSilakan login melalui portal *ECrew Transwisata* untuk akses *ECrew Leaves System* dan memproses pengajuan ini.\n\nTerima kasih.`;
+                
+                if (hInfo?.Phone) triggerWhatsApp(hInfo.Phone, waMsg); 
+                
+                showToast('Berhasil Dikirim!'); 
+                closeRequestModal(); 
+                setTimeout(async () => { await fetchFromSheet(); loadDashboard(); }, 1200); 
+            }
             else { showToast('Gagal mengirim!', 'error'); btn.disabled = false; btn.innerText = txt; }
         });
 
@@ -634,7 +647,11 @@
             $('modal-detail').classList.remove('hidden'); $('modal-detail').classList.add('flex');
         }
         function closeDetail() { $('modal-detail').classList.add('hidden'); }
-        function formatDate(d) { return d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : "-"; }
+        function formatDate(d) { 
+            if (!d) return "-";
+            const date = new Date(d);
+            return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }); 
+        }
         function showToast(msg, type = 'success') { $('toast-msg').innerText = msg; $('toast-icon').className = `w-8 h-8 rounded-full flex items-center justify-center text-sm ${type === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`; $('toast').classList.remove('hidden'); setTimeout(() => $('toast').classList.add('hidden'), 3000); }
         function triggerWhatsApp(p, m) { const c = String(p).replace(/[^0-9]/g, ''); window.open(`https://wa.me/${c.startsWith('0')?'62'+c.substring(1):c}?text=${encodeURIComponent(m)}`, '_blank'); }
         function toggleMobileMenu() { isMobileMenuOpen = !isMobileMenuOpen; $('mobile-nav-overlay').classList.toggle('invisible'); $('mobile-nav-overlay').classList.toggle('opacity-0'); $('mobile-nav-content').classList.toggle('-translate-x-full'); }
