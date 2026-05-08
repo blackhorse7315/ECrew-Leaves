@@ -16,7 +16,6 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-        
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
         .aviation-gradient { background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); }
         .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
@@ -124,7 +123,7 @@
         </main>
     </div>
 
-    <!-- MODALS -->
+    <!-- MODAL EDIT FORM -->
     <div id="modal-edit-form" class="fixed inset-0 z-[190] modal-overlay hidden items-center justify-center p-4">
         <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
             <div id="edit-form-header" class="p-6 md:p-8 aviation-gradient text-white flex justify-between items-center shrink-0">
@@ -193,6 +192,7 @@
         </div>
     </div>
 
+    <!-- USER CARD MODAL -->
     <div id="modal-user-card" class="fixed inset-0 z-[180] modal-overlay hidden items-center justify-center p-4">
         <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-sm w-full overflow-hidden animate-fade-in">
             <div class="p-8 aviation-gradient text-white text-center relative">
@@ -212,7 +212,7 @@
     <div id="toast" class="fixed bottom-8 right-8 z-[250] hidden animate-fade-in"><div class="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/10"><div id="toast-icon" class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm"><i class="fas fa-check"></i></div><p id="toast-msg" class="text-sm font-bold">Berhasil</p></div></div>
 
     <script>
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycby6emc8TevvAhAzCzt-aMq3pe2WP34VcLBUU5PQCLUNuHx_C3sB3esubXvyABixUeRk7A/exec";
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxSbmxobZZdiXNdlS34CvAQ9Uo0y1twZars2Cum4j2iP0kogpxaaQYZ7-4ToSjX9TCwkg/exec";
 
         const DIVISIONS = ["Operation", "Maintenance", "Safety", "Staf"];
         const POSITIONS = ["Director", "Safety, Quality & Security Manager", "General Manager", "Operation Manager", "Maintenance Manager", "Chief Pilot Fixed Wing", "Chief Pilot Rotary Wing", "Chief Flight Support", "Chief Engineer", "Chief Inspector", "Chief Finance, Accounting & Tax", "Human Resource Development", "Line Pilot", "Engineer", "Cabin Service", "Staf", "Flight Support", "Ground Support", "Finance", "Logistic", "Aviation Security", "Kurir", "Driver"];
@@ -400,8 +400,8 @@
 
             if (type === 'staff') { 
                 fields.push(
-                    { id: 'f-annual', label: 'Annual Balance (Sisa Saldo)', key: 'AnnualQuota', type: 'number', value: data?.AnnualQuota || 0 }, 
-                    { id: 'f-special', label: 'Special Balance (Sisa Saldo)', key: 'SpecialQuota', type: 'number', value: data?.SpecialQuota || 0 }
+                    { id: 'f-annual', label: 'Sisa Saldo Annual', key: 'AnnualQuota', type: 'number', value: data?.AnnualQuota || 0 }, 
+                    { id: 'f-special', label: 'Sisa Saldo Special', key: 'SpecialQuota', type: 'number', value: data?.SpecialQuota || 0 }
                 ); 
             }
             fields.push(
@@ -427,22 +427,28 @@
         $('dynamic-edit-form').addEventListener('submit', async (e) => {
             e.preventDefault(); 
             const type = currentEditType;
-            showToast('Sedang menyimpan data...', 'success');
+            showToast('Sedang menyimpan perubahan...', 'success');
             
+            // PERBAIKAN: Gunakan kunci "ID" (huruf besar) agar sesuai dengan logika backend yang mencari ID
             let payload = { ID: (type === 'staff' ? editingUserId : editingHeadId) || (type === 'staff' ? 'USR-' : 'HEAD-') + Math.floor(1000 + Math.random()*9000) };
             const inputs = e.target.querySelectorAll('input, select');
+            
             inputs.forEach(input => {
                 const key = input.getAttribute('data-key');
-                if (key) payload[key] = input.value;
+                if (key) {
+                    let val = input.value;
+                    if (input.type === 'number') val = parseInt(val) || 0;
+                    payload[key] = val;
+                }
             });
             
             closeEditModal(); 
             const res = await callGAS(type === 'staff' ? 'saveUser' : 'saveHead', payload);
             if (res.status === 'success') {
-                showToast('Data Berhasil Disimpan!');
+                showToast('Data Berhasil Diperbarui!');
                 setTimeout(async () => { await fetchFromSheet(); type === 'staff' ? loadEmployeeManagerUI() : loadHeadManagerUI(); }, 800);
             } else {
-                showToast('Gagal menyimpan data!', 'error');
+                showToast('Gagal menyimpan perubahan: ' + (res.message || 'Error Unknown'), 'error');
             }
         });
 
@@ -507,18 +513,17 @@
             const r = leaveRequests.find(req => req.ID.toString() === pendingApprovalId.toString()); 
             if (!r) return;
             
-            r.id = r.ID; 
+            // PERBAIKAN: Gunakan kunci "ID" yang konsisten
+            r.ID = r.ID; 
             r.Status = isApproveAction ? (currentUser.role === ROLES.HEAD ? 'HRD_APPROVAL' : 'APPROVED') : 'REJECTED';
             if (currentUser.role === ROLES.HEAD) r.HeadNote = note; else r.HRDNote = note;
             
             closeNoteModal(); 
-            showToast('Memproses & Mengupdate Database...', 'success'); 
+            showToast('Memproses...', 'success'); 
             loadApprovalList(); 
             
-            // Simpan Request
             await callGAS('saveRequest', r);
             
-            // Jika Approved Permanen oleh HRD, potong saldo user
             if (r.Status === 'APPROVED') {
                 const u = users.find(usr => usr.Name === r.Name);
                 if (u) {
@@ -528,12 +533,13 @@
                     } else {
                         u.SpecialQuota = Math.max(0, (parseInt(u.SpecialQuota) || 0) - dur);
                     }
-                    u.id = u.ID; // Pastikan ID ada untuk update
+                    // PERBAIKAN: Gunakan ID huruf besar agar sinkron dengan skrip backend
+                    u.ID = u.ID;
                     await callGAS('saveUser', u);
                 }
             }
             
-            setTimeout(async () => { await fetchFromSheet(); switchTab('approval'); showToast('Keputusan & Saldo Sisa Disimpan!'); }, 800);
+            setTimeout(async () => { await fetchFromSheet(); switchTab('approval'); showToast('Berhasil Disimpan!'); }, 800);
         }
 
         async function cancelRequest(id) { 
@@ -542,10 +548,10 @@
             if (!r) return; 
             
             const oldStatus = r.Status;
-            r.id = r.ID; 
+            r.ID = r.ID; 
             r.Status = 'CANCELLED'; 
             
-            showToast('Membatalkan & Memulihkan Saldo...', 'success'); 
+            showToast('Membatalkan...', 'success'); 
             await callGAS('saveRequest', r); 
 
             if (oldStatus === 'APPROVED') {
@@ -557,11 +563,11 @@
                     } else {
                         u.SpecialQuota = (parseInt(u.SpecialQuota) || 0) + dur;
                     }
-                    u.id = u.ID;
+                    u.ID = u.ID;
                     await callGAS('saveUser', u);
                 }
             }
-            setTimeout(async () => { await fetchFromSheet(); loadHistory(); showToast('Saldo Pulih di Database!'); }, 800); 
+            setTimeout(async () => { await fetchFromSheet(); loadHistory(); showToast('Saldo Dipulihkan!'); }, 800); 
         }
 
         function closeNoteModal() { $('note-text').value = ''; $('modal-note').classList.add('hidden'); $('modal-note').classList.remove('flex'); }
