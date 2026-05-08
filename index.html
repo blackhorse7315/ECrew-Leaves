@@ -176,7 +176,7 @@
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Head Dept <span class="text-red-500">*</span></label><select id="r-target-head" required class="w-full px-4 py-3 rounded-2xl border bg-slate-50 font-semibold text-sm"></select></div>
-                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tipe Cuti</label><select id="r-type" required class="w-full px-4 py-3 rounded-2xl border bg-slate-50 font-semibold text-sm" onchange="onLeaveTypeChange()"><option value="">Pilih Tipe Cuti</option><option value="Annual Leave">Annual Leave</option><option value="Special Leave">Special Leave</option><option value="Menikah">Menikah (3 Hari)</option><option value="Menikahkan anak">Menikahkan anak (2 Hari)</option><option value="Istri melahirkan / keguguran">Istri melahirkan / keguguran (2 Hari)</option><option value="Khitanan anak">Khitanan anak (2 Hari)</option><option value="Baptis anak">Baptis anak (2 Hari)</option><option value="Keluarga serumah meninggal">Keluarga serumah meninggal (2 Hari)</option><option value="Anggota keluarga serumah lain meninggal">Anggota keluarga serumah lain meninggal (1 Hari)</option></select></div>
+                    <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tipe Cuti</label><select id="r-type" required class="w-full px-4 py-3 rounded-2xl border bg-slate-50 font-semibold text-sm" onchange="onLeaveTypeChange()"><option value="">Pilih Tipe Cuti</option><option value="Annual Leave">Annual Leave</option><option value="Special Leave">Special Leave</option><option value="Menikah">Menikah (3 Hari)</option><option value="Menikahkan anak">Menikahkan anak (2 Hari)</option><option value="Istri melahirkan / keguguran">Istri melahirkan / keguguran (2 Hari)</option><option value="Khitanan anak">Khitanan anak (2 Hari)</option><option value="Baptis anak (2 Hari)">Baptis anak (2 Hari)</option><option value="Keluarga serumah meninggal">Keluarga serumah meninggal (2 Hari)</option><option value="Anggota keluarga serumah lain meninggal">Anggota keluarga serumah lain meninggal (1 Hari)</option></select></div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Delegasi Tugas Ke</label><select id="r-handover" required class="w-full px-4 py-3 rounded-2xl border bg-slate-50 font-semibold text-sm"></select></div>
@@ -222,7 +222,7 @@
         const HEAD_POSITIONS = ["Quality, Safety, Security Manager", "General Manager", "Operation Manager", "Maintenance Manager", "Chief Pilot Rotary Wing", "Chief Pilot Fixed Wing", "Chief Flight Support", "Chief Engineer", "HRD"];
 
         const SPECIAL_LEAVE_RULES = {
-            "Menikah": 3, "Menikahkan anak": 2, "Istri melahirkan / keguguran": 2, "Khitanan anak": 2, "Baptis anak": 2, "Keluarga serumah meninggal": 2, "Anggota keluarga serumah lain meninggal": 1
+            "Menikah": 3, "Menikahkan anak": 2, "Istri melahirkan / keguguran": 2, "Khitanan anak": 2, "Baptis anak (2 Hari)": 2, "Keluarga serumah meninggal": 2, "Anggota keluarga serumah lain meninggal": 1
         };
 
         let users = []; let heads = []; let leaveRequests = []; let hrdProfile = { name: 'Admin TWA', division: 'HR', position: 'Manager', email: 'hr@transwisata.com', phone: '628123456789' };
@@ -529,14 +529,17 @@
             const r = leaveRequests.find(req => req.ID.toString() === pendingApprovalId.toString()); 
             if (!r) return;
             
-            r.Status = isApproveAction ? (currentUser.role === ROLES.HEAD ? 'HRD_APPROVAL' : 'APPROVED') : 'REJECTED';
-            if (currentUser.role === ROLES.HEAD) r.HeadNote = note; else r.HRDNote = note;
+            const isHeadDecision = currentUser.role === ROLES.HEAD;
+            const isHRDDecision = currentUser.role === ROLES.HRD;
+            
+            r.Status = isApproveAction ? (isHeadDecision ? 'HRD_APPROVAL' : 'APPROVED') : 'REJECTED';
+            if (isHeadDecision) r.HeadNote = note; else r.HRDNote = note;
             
             // Bersihkan properti tanggal agar tetap string YYYY-MM-DD
             r.Start = toISODateString(r.Start);
             r.End = toISODateString(r.End);
             r.SubmitDate = toISODateString(r.SubmitDate || new Date());
-            r.ID = r.ID; // Tetap gunakan properti ID huruf besar
+            r.ID = r.ID;
             
             closeNoteModal(); 
             showToast('Memproses...', 'success'); 
@@ -545,14 +548,20 @@
             await callGAS('saveRequest', r);
             
             // WHATSAPP NOTIFICATIONS
-            if (currentUser.role === ROLES.HEAD) {
+            if (isHeadDecision) {
+                // Notifikasi dari Head Dept ke User
                 const userMsg = `*UPDATE STATUS CUTI*\n\nYth. ${r.Name},\n\nPengajuan cuti Anda tanggal ${formatDate(r.SubmitDate)} ${isApproveAction ? 'telah *DISETUJUI*' : '*TIDAK DISETUJUI*'} oleh ${currentUser.data.Position}.\n\n*Detail Pengajuan:*\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Durasi: ${r.Duration} Hari\n- Alasan: ${r.Reason}\n\n${isApproveAction ? 'Silakan cek detail di aplikasi.' : `Silakan cek detail di aplikasi atau langsung menghubungi ${currentUser.data.Position}.`}\n\nTerima kasih.`;
                 if (r.Phone) triggerWhatsApp(r.Phone, userMsg);
 
+                // Notifikasi dari Head Dept ke HRD jika Setuju
                 if (isApproveAction) {
                     const hrdMsg = `*NOTIFIKASI PENGAJUAN CUTI*\n\nYth. HRD Transwisata,\n\nBerikut ini pengajuan cuti dari anggota kami atas nama *${r.Name}* (${r.Position}) telah saya *SETUJUI*\n\n*Detail Pengajuan:*\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Durasi: ${r.Duration} Hari\n- Alasan: ${r.Reason}\n\nMohon diproses lebih lanjut.\n\nSilakan login melalui portal *ECrew Transwisata* untuk akses *ECrew Leaves System* dan memproses pengajuan ini.\n\nTerima kasih.`;
                     if (hrdProfile.phone) triggerWhatsApp(hrdProfile.phone, hrdMsg);
                 }
+            } else if (isHRDDecision) {
+                // Notifikasi dari HRD ke User
+                const userMsg = `*UPDATE STATUS CUTI*\n\nYth. ${r.Name},\n\nPengajuan cuti Anda tanggal ${formatDate(r.SubmitDate)} ${isApproveAction ? 'telah *DISETUJUI*' : '*TIDAK DISETUJUI*'} oleh HRD Transwisata.\n\n*Detail Pengajuan:*\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Durasi: ${r.Duration} Hari\n- Alasan: ${r.Reason}\n\n${isApproveAction ? 'Silakan cek detail di aplikasi.' : 'Silakan cek detail di aplikasi atau langsung menghubungi HRD Transwisata.'}\n\nTerima kasih.`;
+                if (r.Phone) triggerWhatsApp(r.Phone, userMsg);
             }
             
             if (r.Status === 'APPROVED') {
@@ -602,8 +611,17 @@
         }
 
         function loadHRDProfile() {
-            $('main-content').innerHTML = `<div class="animate-fade-in max-w-xl mx-auto"><div class="glass-card p-10 rounded-[2.5rem] shadow-xl space-y-6"><h3 class="text-xl font-black uppercase text-blue-900 border-b pb-4">Profil HR Dept</h3><form id="hr-profile-form" class="space-y-4"><div><label class="text-[10px] font-black uppercase text-slate-400">Nama Manager</label><input type="text" id="hr-p-name" value="${hrdProfile.name}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div><div><label class="text-[10px] font-black uppercase text-slate-400">Email Notifikasi</label><input type="email" id="hr-p-email" value="${hrdProfile.email}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div><div><label class="text-[10px] font-black uppercase text-slate-400">WhatsApp</label><input type="text" id="hr-p-phone" value="${hrdProfile.phone}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div><button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-xs shadow-lg mt-4">Simpan Profil</button></form></div></div>`;
-            $('hr-profile-form').addEventListener('submit', async (e) => { e.preventDefault(); hrdProfile = { name: $('hr-p-name').value, email: $('hr-p-email').value, phone: $('hr-p-phone').value }; await callGAS('saveProfile', hrdProfile); showToast('Profil Diperbarui!'); });
+            $('main-content').innerHTML = `<div class="animate-fade-in max-w-xl mx-auto"><div class="glass-card p-10 rounded-[2.5rem] shadow-xl space-y-6"><h3 class="text-xl font-black uppercase text-blue-900 border-b pb-4">Profil HR Dept</h3><form id="hr-profile-form" class="space-y-4"><div><label class="text-[10px] font-black uppercase text-slate-400">Nama Manager</label><input type="text" id="hr-p-name" value="${hrdProfile.name}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div><div><label class="text-[10px] font-black uppercase text-slate-400">Email Notifikasi</label><input type="email" id="hr-p-email" value="${hrdProfile.email}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div><div><label class="text-[10px] font-black uppercase text-slate-400">WhatsApp</label><input type="text" id="hr-p-phone" value="${hrdProfile.phone}" placeholder="Contoh: 08123456789" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"><p class="text-[9px] text-slate-400 mt-1 italic font-medium">Bisa diawali 08, 62, atau +62. Sistem akan menyesuaikan otomatis.</p></div><button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-xs shadow-lg mt-4">Simpan Profil</button></form></div></div>`;
+            $('hr-profile-form').addEventListener('submit', async (e) => { 
+                e.preventDefault(); 
+                hrdProfile = { 
+                    name: $('hr-p-name').value, 
+                    email: $('hr-p-email').value, 
+                    phone: $('hr-p-phone').value.replace(/[^0-9+]/g, '') // Simpan nomor bersih
+                }; 
+                await callGAS('saveProfile', hrdProfile); 
+                showToast('Profil Diperbarui!'); 
+            });
         }
 
         function openRequestModal() {
@@ -698,7 +716,23 @@
             return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }); 
         }
         function showToast(msg, type = 'success') { $('toast-msg').innerText = msg; $('toast-icon').className = `w-8 h-8 rounded-full flex items-center justify-center text-sm ${type === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`; $('toast').classList.remove('hidden'); setTimeout(() => $('toast').classList.add('hidden'), 3000); }
-        function triggerWhatsApp(p, m) { const c = String(p).replace(/[^0-9]/g, ''); window.open(`https://wa.me/${c.startsWith('0')?'62'+c.substring(1):c}?text=${encodeURIComponent(m)}`, '_blank'); }
+        
+        // Fungsi pemicu WhatsApp yang lebih cerdas dan robust
+        function triggerWhatsApp(p, m) { 
+            if (!p) return;
+            let c = String(p).replace(/[^0-9]/g, ''); // Ambil hanya angka
+            
+            // Logika konversi ke format internasional
+            if (c.startsWith('0')) {
+                c = '62' + c.substring(1); // 08... menjadi 628...
+            } else if (c.startsWith('8')) {
+                c = '62' + c; // 8... menjadi 628...
+            }
+            
+            // Buka link wa.me resmi
+            window.open(`https://wa.me/${c}?text=${encodeURIComponent(m)}`, '_blank'); 
+        }
+
         function toggleMobileMenu() { isMobileMenuOpen = !isMobileMenuOpen; $('mobile-nav-overlay').classList.toggle('invisible'); $('mobile-nav-overlay').classList.toggle('opacity-0'); $('mobile-nav-content').classList.toggle('-translate-x-full'); }
 
         function showUserCard(id, type) {
