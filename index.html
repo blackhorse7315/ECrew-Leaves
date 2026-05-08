@@ -74,14 +74,31 @@
             display: inline-block;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .spin-sync {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Status Sync Panel */
+        #global-loader {
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+        }
+        .loader-hidden {
+            transform: translateY(100px);
+            opacity: 0;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body class="text-slate-800">
 
-    <!-- OVERLAY LOADING -->
-    <div id="global-loader" class="fixed inset-0 z-[300] bg-white flex flex-col items-center justify-center gap-4">
-        <div class="loader w-12 h-12 border-4"></div>
-        <p class="font-black text-blue-900 uppercase tracking-widest text-xs">Menghubungkan ke Database...</p>
+    <!-- STATUS SYNC ( Pojok Kanan Bawah ) -->
+    <div id="global-loader" class="fixed bottom-6 right-6 z-[300] bg-white/90 backdrop-blur-md px-5 py-4 rounded-[1.5rem] shadow-2xl border border-blue-100 flex items-center gap-4 animate-fade-in">
+        <div class="loader w-6 h-6 border-2 border-slate-100 border-top-blue-600"></div>
+        <div>
+            <p class="font-black text-blue-900 uppercase tracking-widest text-[9px]">Status Sinkronisasi</p>
+            <p class="text-[11px] font-bold text-slate-500">Menghubungkan ke Database...</p>
+        </div>
     </div>
 
     <!-- LOGIN PAGE -->
@@ -183,6 +200,9 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
+                    <button id="sync-btn" onclick="manualSync()" class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white flex items-center justify-center transition-all shadow-sm" title="Sync Data">
+                        <i class="fas fa-sync-alt" id="sync-icon"></i>
+                    </button>
                     <div id="current-date" class="hidden lg:block text-xs font-bold text-slate-400 bg-slate-50 px-4 py-2 rounded-full border border-slate-100"></div>
                     <img id="header-user-avatar" src="" class="w-8 h-8 rounded-full border border-blue-100 md:hidden" />
                 </div>
@@ -276,7 +296,7 @@
     </div>
 
     <script>
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzb2c4FYBoQa2sJlZ8kZGqbXT4PQER22Py6qy23LcEISXFaLRiXy0uMEU2laFM4PJ_5DQ/exec";
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzvdLA41BHtU4aViGQZ5Eh2NjRsrH1yIRhGB2pyV8nQC1dNWCKjDRV6er309xOOYAaxyA/exec";
 
         const DIVISIONS = ["Operation", "Maintenance", "Safety", "Staf"];
         const POSITIONS = ["Director", "Safety, Quality & Security Manager", "General Manager", "Operation Manager", "Maintenance Manager", "Chief Pilot Fixed Wing", "Chief Pilot Rotary Wing", "Chief Flight Support", "Chief Engineer", "Chief Inspector", "Chief Finance, Accounting & Tax", "Human Resource Development", "Line Pilot", "Engineer", "Cabin Service", "Staf", "Flight Support", "Ground Support", "Finance", "Logistic", "Aviation Security", "Kurir", "Driver"];
@@ -294,6 +314,7 @@
         let pendingApprovalId = null;
         let isApproveAction = true;
         let isMobileMenuOpen = false;
+        let isSyncing = false;
 
         const $ = (id) => document.getElementById(id);
 
@@ -315,11 +336,37 @@
                 }
             } catch (err) { 
                 console.error("Fetch error:", err);
-                // Mock data fallback
-                users = [{ID: 'USR-001', Name: 'Muhamad Ramdani Masri', Division: 'Operation', Position: 'Chief Pilot Rotary Wing', Username: 'ramdan', Password: '28', AnnualQuota: 12, SpecialQuota: 40, Phone: '6281215917554'}];
-                heads = [{ID: 'HEAD-001', Name: 'Capt. Bambang', Division: 'Operation', Position: 'Operation Manager', Username: 'bambang', Password: '123', Phone: '628111222333'}];
             }
             return false;
+        }
+
+        async function manualSync() {
+            if(isSyncing) return;
+            isSyncing = true;
+            $('sync-icon').classList.add('spin-sync');
+            $('sync-btn').classList.add('opacity-50');
+            
+            // Tampilkan indikator loader manual
+            $('global-loader').classList.remove('loader-hidden');
+            
+            const success = await fetchFromSheet();
+            
+            setTimeout(() => {
+                $('sync-icon').classList.remove('spin-sync');
+                $('sync-btn').classList.remove('opacity-50');
+                
+                // Sembunyikan indikator loader
+                $('global-loader').classList.add('loader-hidden');
+                
+                isSyncing = false;
+                if(success) {
+                    showToast('Database Sinkron!');
+                    const currentTab = document.querySelector('.nav-item.text-white')?.id.replace('nav-', '');
+                    if(currentTab) switchTab(currentTab);
+                } else {
+                    showToast('Sync Gagal!', 'error');
+                }
+            }, 500);
         }
 
         async function callGAS(action, data = {}) {
@@ -336,8 +383,11 @@
 
         // --- BULK PARSE LOGIC ---
         async function handleBulkParse() {
-            const text = $('e-bulk-input').value.trim();
+            const inputEl = $('e-bulk-input');
+            if (!inputEl) return;
+            const text = inputEl.value.trim();
             if (!text) return;
+            
             const lines = text.split('\n');
             let count = 0;
             for (let line of lines) {
@@ -353,14 +403,18 @@
                     count++;
                 }
             }
-            showToast(`${count} Karyawan diproses`);
-            $('e-bulk-input').value = '';
-            setTimeout(async () => { await fetchFromSheet(); loadEmployeeManagerUI(); }, 1500);
+            showToast(`${count} Karyawan Berhasil Diinput!`);
+            const finalInputEl = $('e-bulk-input');
+            if (finalInputEl) finalInputEl.value = '';
+            setTimeout(async () => { await fetchFromSheet(); loadEmployeeManagerUI(); }, 1000);
         }
 
         async function handleHeadBulkParse() {
-            const text = $('h-bulk-input').value.trim();
+            const inputEl = $('h-bulk-input');
+            if (!inputEl) return;
+            const text = inputEl.value.trim();
             if (!text) return;
+            
             const lines = text.split('\n');
             let count = 0;
             for (let line of lines) {
@@ -377,16 +431,39 @@
                     count++;
                 }
             }
-            showToast(`${count} Head Dept diproses`);
-            $('h-bulk-input').value = '';
-            setTimeout(async () => { await fetchFromSheet(); loadHeadManagerUI(); }, 1500);
+            showToast(`${count} Head Dept Berhasil Diinput!`);
+            const finalInputEl = $('h-bulk-input');
+            if (finalInputEl) finalInputEl.value = '';
+            setTimeout(async () => { await fetchFromSheet(); loadHeadManagerUI(); }, 1000);
+        }
+
+        // --- DELETE LOGIC ---
+        async function deleteUser(id) {
+            if(!confirm('Apakah Anda yakin ingin menghapus karyawan ini? Data di Google Sheet akan terhapus.')) return;
+            showToast('Menghapus...');
+            await callGAS('deleteUser', { id: id });
+            setTimeout(async () => {
+                await fetchFromSheet();
+                loadEmployeeManagerUI();
+                showToast('Karyawan Berhasil Dihapus!');
+            }, 1000);
+        }
+
+        async function deleteHead(id) {
+            if(!confirm('Apakah Anda yakin ingin menghapus Head Dept ini?')) return;
+            showToast('Menghapus...');
+            await callGAS('deleteHead', { id: id });
+            setTimeout(async () => {
+                await fetchFromSheet();
+                loadHeadManagerUI();
+                showToast('Head Dept Berhasil Dihapus!');
+            }, 1000);
         }
 
         // --- UI MANAGERS ---
         function loadEmployeeManagerUI() {
             $('main-content').innerHTML = `
                 <div class="animate-fade-in space-y-8">
-                    <!-- BULK BOX -->
                     <div class="glass-card p-6 md:p-8 rounded-[2.5rem] shadow-xl border-2 border-blue-100 bg-blue-50/30">
                          <div class="flex items-center gap-3 mb-4">
                             <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fas fa-magic"></i></div>
@@ -396,9 +473,8 @@
                             </div>
                         </div>
                         <textarea id="e-bulk-input" rows="4" placeholder="Ramdani | Operation | Line Pilot | ramdan@twa.com | 0812... | 12 | 40 | ramdan | pass" class="w-full px-5 py-4 rounded-3xl border border-blue-200 outline-none text-sm mb-4"></textarea>
-                        <button onclick="handleBulkParse()" class="w-full py-3 bg-blue-900 text-white rounded-2xl font-black uppercase text-xs shadow-xl">Proses Bulk Karyawan</button>
+                        <button onclick="handleBulkParse()" class="w-full py-3 bg-blue-900 text-white rounded-2xl font-black uppercase text-xs shadow-xl transition-all active:scale-95">Proses Bulk Karyawan</button>
                     </div>
-
                     <div class="glass-card p-6 md:p-10 rounded-[2.5rem] shadow-xl">
                         <h4 class="text-sm font-black text-blue-900 uppercase mb-8 pb-2 border-b">${editingUserId ? 'Edit Karyawan' : 'Daftar Karyawan Baru'}</h4>
                         <form id="employee-form" class="space-y-6">
@@ -416,8 +492,7 @@
                             <div class="flex gap-4"><button type="button" onclick="cancelEdit()" class="flex-1 py-3 bg-slate-100 rounded-xl font-bold uppercase text-[10px]">Reset</button><button type="submit" class="flex-[3] py-3 bg-blue-600 text-white rounded-xl font-black uppercase text-[10px] shadow-lg">Simpan</button></div>
                         </form>
                     </div>
-
-                    <div class="glass-card rounded-[2rem] overflow-x-auto shadow-sm"><table class="w-full text-left min-w-[600px]"><thead class="bg-slate-50 text-[10px] font-black uppercase border-b"><tr><th class="px-8 py-5">Karyawan</th><th class="px-6 py-5">Jabatan</th><th class="px-8 py-5 text-right">Aksi</th></tr></thead><tbody class="divide-y divide-slate-50">${users.map(u => `<tr><td class="px-8 py-5"><p class="text-xs md:text-sm font-black">${u.Name}</p><p class="text-[10px] text-slate-400">${u.Email}</p></td><td class="px-6 py-5"><p class="text-[10px] md:text-xs font-bold text-slate-600">${u.Division}</p><p class="text-[9px] text-slate-400">${u.Position}</p></td><td class="px-8 py-5 text-right"><button onclick="editUser('${u.ID}')" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all"><i class="fas fa-edit text-[10px]"></i></button></td></tr>`).join('')}</tbody></table></div>
+                    <div class="glass-card rounded-[2rem] overflow-x-auto shadow-sm"><table class="w-full text-left min-w-[600px]"><thead class="bg-slate-50 text-[10px] font-black uppercase border-b"><tr><th class="px-8 py-5">Karyawan</th><th class="px-6 py-5">Jabatan</th><th class="px-8 py-5 text-right">Aksi</th></tr></thead><tbody class="divide-y divide-slate-50">${users.map(u => `<tr><td class="px-8 py-5"><p class="text-xs md:text-sm font-black">${u.Name}</p><p class="text-[10px] text-slate-400">${u.Email}</p></td><td class="px-6 py-5"><p class="text-[10px] md:text-xs font-bold text-slate-600">${u.Division}</p><p class="text-[9px] text-slate-400">${u.Position}</p></td><td class="px-8 py-5 text-right flex justify-end gap-2"><button onclick="editUser('${u.ID}')" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center"><i class="fas fa-edit text-[10px]"></i></button><button onclick="deleteUser('${u.ID}')" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"><i class="fas fa-trash text-[10px]"></i></button></td></tr>`).join('')}</tbody></table></div>
                 </div>`;
             $('employee-form').addEventListener('submit', handleEmployeeSubmit);
         }
@@ -425,7 +500,6 @@
         function loadHeadManagerUI() {
             $('main-content').innerHTML = `
                 <div class="animate-fade-in space-y-8">
-                    <!-- BULK BOX -->
                     <div class="glass-card p-6 md:p-8 rounded-[2.5rem] shadow-xl border-2 border-emerald-100 bg-emerald-50/30">
                          <div class="flex items-center gap-3 mb-4">
                             <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="fas fa-magic"></i></div>
@@ -435,9 +509,8 @@
                             </div>
                         </div>
                         <textarea id="h-bulk-input" rows="4" placeholder="Capt Bambang | Operation | Operation Manager | bambang@twa.com | 0811... | bambang | 123" class="w-full px-5 py-4 rounded-3xl border border-emerald-200 outline-none text-sm mb-4"></textarea>
-                        <button onclick="handleHeadBulkParse()" class="w-full py-3 bg-emerald-700 text-white rounded-2xl font-black uppercase text-xs shadow-xl">Proses Bulk Head</button>
+                        <button onclick="handleHeadBulkParse()" class="w-full py-3 bg-emerald-700 text-white rounded-2xl font-black uppercase text-xs shadow-xl transition-all active:scale-95">Proses Bulk Head</button>
                     </div>
-
                     <div class="glass-card p-6 md:p-10 rounded-[2.5rem] shadow-xl">
                         <h4 class="text-sm font-black text-blue-900 uppercase mb-8 pb-2 border-b">${editingHeadId ? 'Edit Head Dept' : 'Daftar Head Dept Baru'}</h4>
                         <form id="head-form" class="space-y-6">
@@ -453,8 +526,7 @@
                             <div class="flex gap-4 pt-4"><button type="button" onclick="cancelHeadEdit()" class="flex-1 py-3 bg-slate-100 rounded-xl font-bold uppercase text-[10px]">Batal</button><button type="submit" class="flex-[3] py-3 bg-blue-600 text-white rounded-xl font-black uppercase text-[10px] shadow-lg">Simpan</button></div>
                         </form>
                     </div>
-
-                    <div class="glass-card rounded-[2rem] overflow-x-auto shadow-sm"><table class="w-full text-left min-w-[500px]"><thead class="bg-slate-50 text-[10px] font-black uppercase border-b"><tr><th class="px-8 py-5">Info Head</th><th class="px-6 py-5">Jabatan</th><th class="px-8 py-5 text-right">Aksi</th></tr></thead><tbody class="divide-y divide-slate-50">${heads.map(h => `<tr><td class="px-8 py-5"><p class="text-xs font-black">${h.Name}</p><p class="text-[10px] text-slate-400">${h.Email}</p></td><td class="px-6 py-5"><p class="text-[10px] font-bold text-slate-600">${h.Division}</p><p class="text-[9px] text-slate-400">${h.Position}</p></td><td class="px-8 py-5 text-right"><button onclick="editHead('${h.ID}')" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 transition-all"><i class="fas fa-edit text-[10px]"></i></button></td></tr>`).join('')}</tbody></table></div>
+                    <div class="glass-card rounded-[2rem] overflow-x-auto shadow-sm"><table class="w-full text-left min-w-[500px]"><thead class="bg-slate-50 text-[10px] font-black uppercase border-b"><tr><th class="px-8 py-5">Info Head</th><th class="px-6 py-5">Jabatan</th><th class="px-8 py-5 text-right">Aksi</th></tr></thead><tbody class="divide-y divide-slate-50">${heads.map(h => `<tr><td class="px-8 py-5"><p class="text-xs font-black">${h.Name}</p><p class="text-[10px] text-slate-400">${h.Email}</p></td><td class="px-6 py-5"><p class="text-[10px] font-bold text-slate-600">${h.Division}</p><p class="text-[9px] text-slate-400">${h.Position}</p></td><td class="px-8 py-5 text-right flex justify-end gap-2"><button onclick="editHead('${h.ID}')" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 transition-all flex items-center justify-center"><i class="fas fa-edit text-[10px]"></i></button><button onclick="deleteHead('${h.ID}')" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"><i class="fas fa-trash text-[10px]"></i></button></td></tr>`).join('')}</tbody></table></div>
                 </div>`;
             $('head-form').addEventListener('submit', handleHeadSubmit);
         }
@@ -532,18 +604,19 @@
         }
 
         function loadDashboard() {
-            const data = currentUser.data || { AnnualQuota:0, SpecialQuota:0, Used:0, Pending:0 };
             if (currentUser.role === ROLES.STAFF) {
                 const myReqs = leaveRequests.filter(r => r.Name === currentUser.name);
-                const active = myReqs.find(r => r.Status.includes('REVIEW') || r.Status.includes('APPROVAL'));
+                const pendingCount = myReqs.filter(r => r.Status !== 'APPROVED' && r.Status !== 'REJECTED').length;
+                const usedCount = myReqs.filter(r => r.Status === 'APPROVED').reduce((acc, r) => acc + (parseInt(r.Duration) || 0), 0);
+
                 $('main-content').innerHTML = `
                 <div class="space-y-8 animate-fade-in">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-slate-800">Ringkasan Cuti</h3><button onclick="openRequestModal()" class="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase shadow-lg">Pengajuan Baru</button></div>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                        <div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Tahunan</p><h3 class="text-3xl font-black text-blue-900">${data.AnnualQuota || 0}</h3></div>
-                        <div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Spesial</p><h3 class="text-3xl font-black text-blue-900">${data.SpecialQuota || 0}</h3></div>
-                        <div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Dipakai</p><h3 class="text-3xl font-black text-emerald-600">${data.Used || 0}</h3></div>
-                        <div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Menunggu</p><h3 class="text-3xl font-black text-amber-500">${data.Pending || 0}</h3></div>
+                        <div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Kuota Tahunan</p><h3 class="text-3xl font-black text-blue-900">${currentUser.data.AnnualQuota || 0}</h3></div>
+                        <div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Kuota Spesial</p><h3 class="text-3xl font-black text-blue-900">${currentUser.data.SpecialQuota || 0}</h3></div>
+                        <div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Sudah Dipakai</p><h3 class="text-3xl font-black text-emerald-600">${usedCount}</h3></div>
+                        <div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Menunggu (Pending)</p><h3 class="text-3xl font-black text-amber-500">${pendingCount}</h3></div>
                     </div>
                 </div>`;
             } else {
@@ -560,8 +633,9 @@
                 annualquota: parseInt($('e-annual').value), specialquota: parseInt($('e-special').value), used: 0, pending: 0 
             };
             await callGAS('saveUser', payload);
-            showToast('Memproses...');
-            setTimeout(async () => { await fetchFromSheet(); loadEmployeeManagerUI(); }, 1200);
+            showToast('Data Sedang Diproses...');
+            editingUserId = null;
+            setTimeout(async () => { await fetchFromSheet(); loadEmployeeManagerUI(); showToast('Data Karyawan Berhasil Disimpan!'); }, 1200);
         }
 
         async function handleHeadSubmit(e) {
@@ -571,8 +645,9 @@
                 email: $('h-email').value, phone: $('h-phone').value, username: $('h-username').value, password: $('h-password').value 
             };
             await callGAS('saveHead', payload);
-            showToast('Memproses...');
-            setTimeout(async () => { await fetchFromSheet(); loadHeadManagerUI(); }, 1200);
+            showToast('Data Sedang Diproses...');
+            editingHeadId = null;
+            setTimeout(async () => { await fetchFromSheet(); loadHeadManagerUI(); showToast('Data Head Berhasil Disimpan!'); }, 1200);
         }
 
         function editUser(id) {
@@ -581,16 +656,19 @@
             if (!u) return;
             loadEmployeeManagerUI();
             setTimeout(() => {
-                $('e-name').value = u.Name || '';
-                $('e-division').value = u.Division || '';
-                $('e-position').value = u.Position || '';
-                $('e-email').value = u.Email || '';
-                $('e-phone').value = u.Phone || '';
-                $('e-username').value = u.Username || '';
-                $('e-password').value = u.Password || '';
-                $('e-annual').value = u.AnnualQuota || 12;
-                $('e-special').value = u.SpecialQuota || 40;
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                const el = $('e-name');
+                if (el) {
+                    el.value = u.Name || '';
+                    $('e-division').value = u.Division || '';
+                    $('e-position').value = u.Position || '';
+                    $('e-email').value = u.Email || '';
+                    $('e-phone').value = u.Phone || '';
+                    $('e-username').value = u.Username || '';
+                    $('e-password').value = u.Password || '';
+                    $('e-annual').value = u.AnnualQuota || 12;
+                    $('e-special').value = u.SpecialQuota || 40;
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
             }, 100);
         }
 
@@ -600,14 +678,17 @@
             if (!h) return;
             loadHeadManagerUI();
             setTimeout(() => {
-                $('h-name').value = h.Name || '';
-                $('h-division').value = h.Division || '';
-                $('h-position').value = h.Position || '';
-                $('h-email').value = h.Email || '';
-                $('h-phone').value = h.Phone || '';
-                $('h-username').value = h.Username || '';
-                $('h-password').value = h.Password || '';
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                const el = $('h-name');
+                if (el) {
+                    el.value = h.Name || '';
+                    $('h-division').value = h.Division || '';
+                    $('h-position').value = h.Position || '';
+                    $('h-email').value = h.Email || '';
+                    $('h-phone').value = h.Phone || '';
+                    $('h-username').value = h.Username || '';
+                    $('h-password').value = h.Password || '';
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
             }, 100);
         }
 
@@ -619,7 +700,7 @@
                     <h3 class="font-black uppercase text-slate-800 tracking-tight">Riwayat Cuti</h3>
                     <div class="glass-card rounded-[2rem] overflow-hidden shadow-sm">
                         <table class="w-full text-left"><thead class="bg-slate-50 text-[10px] font-black uppercase border-b"><tr><th class="px-8 py-5">Karyawan</th><th class="px-6 py-5">Periode</th><th class="px-6 py-5">Status</th><th class="px-8 py-5 text-right">Info</th></tr></thead>
-                        <tbody class="divide-y divide-slate-50">${data.map(r => `<tr><td class="px-8 py-5"><p class="text-xs font-black">${r.Name}</p><p class="text-[9px] text-slate-400 uppercase">${r.Position}</p></td><td class="px-6 py-5"><p class="text-[10px] font-bold">${r.Type}</p><p class="text-[9px] text-slate-500">${formatDate(r.Start)}</p></td><td class="px-6 py-5"><span class="px-3 py-1 rounded-full text-[8px] font-black uppercase ${r.Status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : (r.Status === 'REJECTED' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600')}">${r.Status}</span></td><td class="px-8 py-5 text-right"><button onclick="showDetail('${r.ID}')" class="text-blue-600"><i class="fas fa-eye"></i></button></td></tr>`).join('')}</tbody></table>
+                        <tbody class="divide-y divide-slate-50">${data.map(r => `<tr><td class="px-8 py-5"><p class="text-xs font-black">${r.Name}</p><p class="text-[9px] text-slate-400 uppercase">${r.Position}</p></td><td class="px-6 py-5"><p class="text-[10px] font-bold">${r.Type}</p><p class="text-[9px] text-slate-500">${formatDate(r.Start)}</p></td><td class="px-6 py-5"><span class="px-3 py-1 rounded-full text-[8px] font-black uppercase ${r.Status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : (r.Status === 'REJECTED' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600')}">${r.Status}</span></td><td class="px-8 py-5 text-right"><button onclick="showDetail('${r.ID}')" class="text-blue-600 transition-transform active:scale-125"><i class="fas fa-eye"></i></button></td></tr>`).join('')}</tbody></table>
                     </div>
                 </div>`;
         }
@@ -633,25 +714,46 @@
                         ${pending.length === 0 ? '<p class="text-slate-400 italic py-10 text-center glass-card rounded-3xl">Tidak ada antrean.</p>' : 
                         pending.map(r => `
                         <div class="glass-card p-6 rounded-3xl flex justify-between items-center shadow-sm">
-                            <div><h4 class="font-black text-slate-800">${r.Name}</h4><p class="text-xs font-bold text-blue-600 uppercase">${r.Type}</p><p class="text-[10px] text-slate-500">${formatDate(r.Start)}</p></div>
-                            <div class="flex gap-2"><button onclick="handleApprovalAction('${r.ID}', false)" class="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold text-[10px] uppercase">Tolak</button><button onclick="handleApprovalAction('${r.ID}', true)" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-[10px] uppercase shadow-lg">Setuju</button></div>
+                            <div class="flex items-center gap-4">
+                                <button onclick="showDetail('${r.ID}')" class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center transition-all hover:bg-blue-600 hover:text-white" title="Lihat Detail"><i class="fas fa-info"></i></button>
+                                <div><h4 class="font-black text-slate-800">${r.Name}</h4><p class="text-xs font-bold text-blue-600 uppercase">${r.Type}</p><p class="text-[10px] text-slate-500">${formatDate(r.Start)}</p></div>
+                            </div>
+                            <div class="flex gap-2"><button onclick="handleApprovalAction('${r.ID}', false)" class="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold text-[10px] uppercase transition-all active:scale-95">Tolak</button><button onclick="handleApprovalAction('${r.ID}', true)" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg transition-all active:scale-95">Setuju</button></div>
                         </div>`).join('')}
                     </div>
                 </div>`;
         }
 
         function handleApprovalAction(id, approve) { pendingApprovalId = id; isApproveAction = approve; $('note-title').innerText = approve ? 'Setujui' : 'Tolak'; $('modal-note').classList.remove('hidden'); $('modal-note').classList.add('flex'); }
+        
         async function confirmApprovalWithNote() {
             const note = $('note-text').value.trim();
-            const req = leaveRequests.find(r => r.ID === pendingApprovalId);
-            if (!req) return;
+            const reqIndex = leaveRequests.findIndex(r => r.ID === pendingApprovalId);
+            if (reqIndex === -1) return;
+            
+            const req = leaveRequests[reqIndex];
+            req.id = req.ID; 
+            
             req.Status = isApproveAction ? (currentUser.role === ROLES.HEAD ? 'HRD_APPROVAL' : 'APPROVED') : 'REJECTED';
             if (currentUser.role === ROLES.HEAD) req.HeadNote = note; else req.HRDNote = note;
-            await callGAS('saveRequest', req);
+            
             closeNoteModal();
-            setTimeout(async () => { await fetchFromSheet(); loadApprovalList(); }, 1200);
+            showToast('Memproses Keputusan...');
+            
+            loadApprovalList();
+            
+            await callGAS('saveRequest', req);
+            
+            setTimeout(async () => { 
+                await fetchFromSheet(); 
+                if (document.querySelector('.nav-item.text-white')?.id === 'nav-approval') {
+                    loadApprovalList();
+                }
+                showToast('Keputusan Disimpan!'); 
+            }, 800);
         }
-        function closeNoteModal() { $('modal-note').classList.add('hidden'); $('modal-note').classList.remove('flex'); }
+
+        function closeNoteModal() { $('note-text').value = ''; $('modal-note').classList.add('hidden'); $('modal-note').classList.remove('flex'); }
 
         function loadHRDProfile() {
             $('main-content').innerHTML = `
@@ -662,11 +764,16 @@
                             <div><label class="text-[10px] font-black uppercase text-slate-400">Nama Manager</label><input type="text" id="hr-p-name" value="${hrdProfile.name}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
                             <div><label class="text-[10px] font-black uppercase text-slate-400">Email Notifikasi</label><input type="email" id="hr-p-email" value="${hrdProfile.email}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
                             <div><label class="text-[10px] font-black uppercase text-slate-400">WhatsApp Notifikasi</label><input type="text" id="hr-p-phone" value="${hrdProfile.phone}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div>
-                            <button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-xs shadow-lg mt-4">Simpan Profil</button>
+                            <button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-xs shadow-lg mt-4 transition-all active:scale-95">Simpan Profil</button>
                         </form>
                     </div>
                 </div>`;
-            $('hr-profile-form').addEventListener('submit', async (e) => { e.preventDefault(); hrdProfile = { name: $('hr-p-name').value, email: $('hr-p-email').value, phone: $('hr-p-phone').value }; await callGAS('saveProfile', hrdProfile); showToast('Profil diperbarui'); });
+            $('hr-profile-form').addEventListener('submit', async (e) => { 
+                e.preventDefault(); 
+                hrdProfile = { name: $('hr-p-name').value, email: $('hr-p-email').value, phone: $('hr-p-phone').value }; 
+                await callGAS('saveProfile', hrdProfile); 
+                showToast('Profil Berhasil Diperbarui!'); 
+            });
         }
 
         // --- UTILS ---
@@ -702,26 +809,101 @@
             };
             await callGAS('saveRequest', payload);
             if (hInfo && hInfo.Phone) triggerWhatsApp(hInfo.Phone, `Ada pengajuan cuti baru dari ${currentUser.name}.`);
-            showToast('Terkirim'); closeRequestModal();
+            showToast('Pengajuan Berhasil Dikirim!'); closeRequestModal();
             setTimeout(async () => { await fetchFromSheet(); loadDashboard(); }, 1200);
         });
 
         function showDetail(id) {
             const r = leaveRequests.find(req => req.ID === id); if (!r) return;
             $('detail-id').innerText = '#' + r.ID;
-            $('modal-body').innerHTML = `<div class="grid grid-cols-2 gap-4 text-sm"><div><p class="text-[10px] uppercase text-slate-400 font-black">Karyawan</p><p class="font-bold">${r.Name}</p></div><div class="col-span-2"><p class="text-[10px] uppercase text-slate-400 font-black">Alasan</p><p class="italic">"${r.Reason}"</p></div></div>`;
-            $('modal-detail').classList.remove('hidden'); $('modal-detail').classList.add('flex');
+            
+            let statusClass = 'bg-amber-100 text-amber-600';
+            if(r.Status === 'APPROVED') statusClass = 'bg-emerald-100 text-emerald-600';
+            if(r.Status === 'REJECTED') statusClass = 'bg-red-100 text-red-600';
+
+            $('modal-body').innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-[10px] uppercase text-slate-400 font-black tracking-widest">Nama Karyawan</p>
+                            <p class="font-bold text-slate-800">${r.Name}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase text-slate-400 font-black tracking-widest">Divisi / Jabatan</p>
+                            <p class="font-semibold text-slate-700">${r.Division} / ${r.Position}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase text-slate-400 font-black tracking-widest">Tipe Cuti</p>
+                            <p class="font-bold text-blue-700">${r.Type}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase text-slate-400 font-black tracking-widest">Delegasi Tugas Ke</p>
+                            <p class="font-semibold text-slate-700">${r.Handover || '-'}</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-[10px] uppercase text-slate-400 font-black tracking-widest">Periode Cuti</p>
+                            <p class="font-bold text-slate-800">${formatDate(r.Start)} s/d ${formatDate(r.End)}</p>
+                            <p class="text-xs font-bold text-blue-600">${r.Duration} Hari Kerja</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase text-slate-400 font-black tracking-widest">Status Pengajuan</p>
+                            <span class="inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase ${statusClass}">${r.Status}</span>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase text-slate-400 font-black tracking-widest">Nomor Kontak</p>
+                            <p class="font-semibold text-slate-700">${r.Phone || '-'}</p>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2 pt-4 border-t border-slate-100">
+                        <p class="text-[10px] uppercase text-slate-400 font-black tracking-widest mb-1">Alasan Pengajuan</p>
+                        <p class="text-slate-700 leading-relaxed italic bg-slate-50 p-4 rounded-2xl border border-slate-100">"${r.Reason}"</p>
+                    </div>
+                    ${r.HeadNote ? `
+                    <div class="md:col-span-2 p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                        <p class="text-[10px] uppercase text-blue-500 font-black tracking-widest mb-1">Catatan Head Dept</p>
+                        <p class="text-blue-800 text-xs font-medium italic leading-relaxed">"${r.HeadNote}"</p>
+                    </div>` : ''}
+                    ${r.HRDNote ? `
+                    <div class="md:col-span-2 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                        <p class="text-[10px] uppercase text-emerald-500 font-black tracking-widest mb-1">Catatan HR Dept</p>
+                        <p class="text-emerald-800 text-xs font-medium italic leading-relaxed">"${r.HRDNote}"</p>
+                    </div>` : ''}
+                </div>
+            `;
+            $('modal-detail').classList.remove('hidden'); 
+            $('modal-detail').classList.add('flex');
         }
         function closeDetail() { $('modal-detail').classList.add('hidden'); }
         function formatDate(dateStr) { if (!dateStr) return "-"; const date = new Date(dateStr); return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }); }
-        function showToast(msg, type = 'success') { $('toast-msg').innerText = msg; $('toast').classList.remove('hidden'); setTimeout(() => $('toast').classList.add('hidden'), 3000); }
-        function triggerWhatsApp(phone, message) { const clean = phone.replace(/[^0-9]/g, ''); const final = clean.startsWith('0') ? '62' + clean.substring(1) : clean; window.open(`https://wa.me/${final}?text=${encodeURIComponent(message)}`, '_blank'); }
+        
+        function showToast(msg, type = 'success') { 
+            $('toast-msg').innerText = msg; 
+            $('toast-icon').className = `w-8 h-8 rounded-full flex items-center justify-center text-sm ${type === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`;
+            $('toast-icon').innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : 'times'}"></i>`;
+            $('toast').classList.remove('hidden'); 
+            setTimeout(() => $('toast').classList.add('hidden'), 3000); 
+        }
+
+        function triggerWhatsApp(phone, message) { 
+            const phoneStr = String(phone || "");
+            const clean = phoneStr.replace(/[^0-9]/g, ''); 
+            const final = clean.startsWith('0') ? '62' + clean.substring(1) : clean; 
+            window.open(`https://wa.me/${final}?text=${encodeURIComponent(message)}`, '_blank'); 
+        }
         function toggleMobileMenu() { isMobileMenuOpen = !isMobileMenuOpen; $('mobile-nav-overlay').classList.toggle('invisible', !isMobileMenuOpen); $('mobile-nav-overlay').classList.toggle('opacity-0', !isMobileMenuOpen); $('mobile-nav-content').classList.toggle('-translate-x-full', !isMobileMenuOpen); }
 
         window.onload = async () => {
             $('current-date').innerText = formatDate(new Date());
-            await fetchFromSheet();
-            $('global-loader').classList.add('hidden');
+            
+            // Proses sync otomatis berjalan di background
+            const success = await fetchFromSheet();
+            
+            // Sembunyikan loader panel setelah selesai
+            setTimeout(() => {
+                $('global-loader').classList.add('loader-hidden');
+            }, 1000);
         };
     </script>
 </body>
