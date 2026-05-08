@@ -215,7 +215,7 @@
     <div id="toast" class="fixed bottom-8 right-8 z-[250] hidden animate-fade-in"><div class="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/10"><div id="toast-icon" class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm"><i class="fas fa-check"></i></div><p id="toast-msg" class="text-sm font-bold">Berhasil</p></div></div>
 
     <script>
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxSbmxobZZdiXNdlS34CvAQ9Uo0y1twZars2Cum4j2iP0kogpxaaQYZ7-4ToSjX9TCwkg/exec";
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycby6emc8TevvAhAzCzt-aMq3pe2WP34VcLBUU5PQCLUNuHx_C3sB3esubXvyABixUeRk7A/exec";
 
         const DIVISIONS = ["Operation", "Maintenance", "Safety", "Staf"];
         const POSITIONS = ["Director", "Safety, Quality & Security Manager", "General Manager", "Operation Manager", "Maintenance Manager", "Chief Pilot Fixed Wing", "Chief Pilot Rotary Wing", "Chief Flight Support", "Chief Engineer", "Chief Inspector", "Chief Finance, Accounting & Tax", "Human Resource Development", "Line Pilot", "Engineer", "Cabin Service", "Staf", "Flight Support", "Ground Support", "Finance", "Logistic", "Aviation Security", "Kurir", "Driver"];
@@ -233,6 +233,20 @@
         let currentEditType = 'staff';
         let pendingApprovalId = null; let isApproveAction = true; let isMobileMenuOpen = false; let isSyncing = false;
         const $ = (id) => document.getElementById(id);
+
+        // Helper untuk memastikan format tanggal selalu YYYY-MM-DD (menghindari UTC pergeseran)
+        function toISODateString(val) {
+            if (!val) return "";
+            if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+            try {
+                const date = new Date(val);
+                if (isNaN(date.getTime())) return val;
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            } catch (e) { return val; }
+        }
 
         async function fetchFromSheet() {
             try {
@@ -297,7 +311,7 @@
                 return result; 
             } catch (err) { 
                 console.error('GAS Error:', err);
-                return { status: 'error' }; 
+                return { status: 'error', message: err.toString() }; 
             }
         }
 
@@ -517,7 +531,12 @@
             
             r.Status = isApproveAction ? (currentUser.role === ROLES.HEAD ? 'HRD_APPROVAL' : 'APPROVED') : 'REJECTED';
             if (currentUser.role === ROLES.HEAD) r.HeadNote = note; else r.HRDNote = note;
-            r.id = r.ID; // Ensure ID property matches for handleSave
+            
+            // Bersihkan properti tanggal agar tetap string YYYY-MM-DD
+            r.Start = toISODateString(r.Start);
+            r.End = toISODateString(r.End);
+            r.SubmitDate = toISODateString(r.SubmitDate || new Date());
+            r.ID = r.ID; // Tetap gunakan properti ID huruf besar
             
             closeNoteModal(); 
             showToast('Memproses...', 'success'); 
@@ -527,15 +546,9 @@
             
             // WHATSAPP NOTIFICATIONS
             if (currentUser.role === ROLES.HEAD) {
-                // Notifikasi ke User (Staff)
-                const decisionText = isApproveAction ? 'DISETUJUI' : 'TIDAK DISETUJUI';
-                const footerText = isApproveAction ? 'Silakan cek detail di aplikasi.' : `Silakan cek detail di aplikasi atau langsung menghubungi ${currentUser.data.Position}.`;
-                
-                const userMsg = `*UPDATE STATUS CUTI*\n\nYth. ${r.Name},\n\nPengajuan cuti Anda tanggal ${formatDate(r.SubmitDate || new Date())} ${isApproveAction ? 'telah *DISETUJUI*' : '*TIDAK DISETUJUI*'} oleh ${currentUser.data.Position}.\n\n*Detail Pengajuan:*\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Durasi: ${r.Duration} Hari\n- Alasan: ${r.Reason}\n\n${footerText}\n\nTerima kasih.`;
-                
+                const userMsg = `*UPDATE STATUS CUTI*\n\nYth. ${r.Name},\n\nPengajuan cuti Anda tanggal ${formatDate(r.SubmitDate)} ${isApproveAction ? 'telah *DISETUJUI*' : '*TIDAK DISETUJUI*'} oleh ${currentUser.data.Position}.\n\n*Detail Pengajuan:*\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Durasi: ${r.Duration} Hari\n- Alasan: ${r.Reason}\n\n${isApproveAction ? 'Silakan cek detail di aplikasi.' : `Silakan cek detail di aplikasi atau langsung menghubungi ${currentUser.data.Position}.`}\n\nTerima kasih.`;
                 if (r.Phone) triggerWhatsApp(r.Phone, userMsg);
 
-                // Notifikasi ke HRD jika Setuju
                 if (isApproveAction) {
                     const hrdMsg = `*NOTIFIKASI PENGAJUAN CUTI*\n\nYth. HRD Transwisata,\n\nBerikut ini pengajuan cuti dari anggota kami atas nama *${r.Name}* (${r.Position}) telah saya *SETUJUI*\n\n*Detail Pengajuan:*\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Durasi: ${r.Duration} Hari\n- Alasan: ${r.Reason}\n\nMohon diproses lebih lanjut.\n\nSilakan login melalui portal *ECrew Transwisata* untuk akses *ECrew Leaves System* dan memproses pengajuan ini.\n\nTerima kasih.`;
                     if (hrdProfile.phone) triggerWhatsApp(hrdProfile.phone, hrdMsg);
@@ -548,7 +561,7 @@
                     const dur = parseInt(r.Duration) || 0;
                     if (r.Type === 'Annual Leave') u.AnnualQuota = Math.max(0, (parseInt(u.AnnualQuota) || 0) - dur);
                     else u.SpecialQuota = Math.max(0, (parseInt(u.SpecialQuota) || 0) - dur);
-                    u.id = u.ID;
+                    u.ID = u.ID;
                     await callGAS('saveUser', u);
                 }
             }
@@ -561,7 +574,13 @@
             const r = leaveRequests.find(req => req.ID.toString() === id.toString()); 
             if (!r) return; 
             const oldStatus = r.Status;
-            r.id = r.ID; r.Status = 'CANCELLED'; 
+            r.Status = 'CANCELLED'; 
+            
+            // Bersihkan properti tanggal
+            r.Start = toISODateString(r.Start);
+            r.End = toISODateString(r.End);
+            r.ID = r.ID;
+            
             showToast('Membatalkan...', 'success'); 
             await callGAS('saveRequest', r); 
             if (oldStatus === 'APPROVED') {
@@ -570,13 +589,17 @@
                     const dur = parseInt(r.Duration) || 0;
                     if (r.Type === 'Annual Leave') u.AnnualQuota = (parseInt(u.AnnualQuota) || 0) + dur;
                     else u.SpecialQuota = (parseInt(u.SpecialQuota) || 0) + dur;
-                    u.id = u.ID; await callGAS('saveUser', u);
+                    u.ID = u.ID; await callGAS('saveUser', u);
                 }
             }
             setTimeout(async () => { await fetchFromSheet(); loadHistory(); showToast('Saldo Dipulihkan!'); }, 800); 
         }
 
-        function closeNoteModal() { $('note-text').value = ''; $('modal-note').classList.add('hidden'); $('modal-note').classList.remove('flex'); }
+        function closeNoteModal() { 
+            $('note-text').value = ''; 
+            $('modal-note').classList.add('hidden'); 
+            $('modal-note').classList.remove('flex'); 
+        }
 
         function loadHRDProfile() {
             $('main-content').innerHTML = `<div class="animate-fade-in max-w-xl mx-auto"><div class="glass-card p-10 rounded-[2.5rem] shadow-xl space-y-6"><h3 class="text-xl font-black uppercase text-blue-900 border-b pb-4">Profil HR Dept</h3><form id="hr-profile-form" class="space-y-4"><div><label class="text-[10px] font-black uppercase text-slate-400">Nama Manager</label><input type="text" id="hr-p-name" value="${hrdProfile.name}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div><div><label class="text-[10px] font-black uppercase text-slate-400">Email Notifikasi</label><input type="email" id="hr-p-email" value="${hrdProfile.email}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div><div><label class="text-[10px] font-black uppercase text-slate-400">WhatsApp</label><input type="text" id="hr-p-phone" value="${hrdProfile.phone}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div><button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-xs shadow-lg mt-4">Simpan Profil</button></form></div></div>`;
@@ -609,34 +632,55 @@
         }
 
         $('leave-request-form').addEventListener('submit', async (e) => {
-            e.preventDefault(); const btn = $('r-submit-btn'); if (btn.disabled) return;
+            e.preventDefault(); 
+            const btn = $('r-submit-btn'); if (btn.disabled) return;
+            
             const headSelect = $('r-target-head');
-            const headPosition = headSelect.options[headSelect.selectedIndex].getAttribute('data-pos');
+            if (!headSelect.value) { showToast('Pilih Head Dept terlebih dahulu!', 'error'); return; }
+            
+            const headOption = headSelect.options[headSelect.selectedIndex];
+            const headPosition = headOption.getAttribute('data-pos') || "Head Dept";
             const hInfo = heads.find(h => h.ID.toString() === headSelect.value.toString());
             
             const txt = btn.innerText; btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Mengirim...`; 
             showToast('Sedang memproses...', 'success');
             
+            // Pastikan data user ada
+            if (!currentUser || !currentUser.data) { showToast('Sesi error, silakan login ulang', 'error'); return; }
+
             const payload = { 
                 ID: 'TWA-' + Math.floor(1000 + Math.random()*9000), 
-                Name: currentUser.name, Division: currentUser.data.Division, Position: currentUser.data.Position, TargetHeadId: headSelect.value, 
-                Type: $('r-type').value, Duration: parseInt($('r-duration-view').innerText), Start: $('r-start').value, End: $('r-end').value, 
-                Status: 'HEAD_DEPT_REVIEW', Reason: $('r-reason').value, Handover: $('r-handover').value, Phone: currentUser.data.Phone,
-                SubmitDate: new Date().toISOString()
+                Name: currentUser.name, 
+                Division: currentUser.data.Division || "-", 
+                Position: currentUser.data.Position || "-", 
+                TargetHeadId: headSelect.value, 
+                Type: $('r-type').value, 
+                Duration: parseInt($('r-duration-view').innerText) || 0, 
+                Start: toISODateString($('r-start').value), 
+                End: toISODateString($('r-end').value), 
+                Status: 'HEAD_DEPT_REVIEW', 
+                Reason: $('r-reason').value, 
+                Handover: $('r-handover').value, 
+                Phone: currentUser.data.Phone || "",
+                SubmitDate: toISODateString(new Date())
             };
             
-            const res = await callGAS('saveRequest', payload);
-            if (res.status === 'success') { 
-                // WHATSAPP USER TO HEAD
-                const waMsg = `*NOTIFIKASI PENGAJUAN CUTI*\n\nYth. ${headPosition},\n\nAda pengajuan cuti baru dari *${currentUser.name}* (${currentUser.data.Position}).\n\n*Detail Pengajuan:*\n- Tipe: ${payload.Type}\n- Periode: ${formatDate(payload.Start)} s/d ${formatDate(payload.End)}\n- Durasi: ${payload.Duration} Hari\n- Alasan: ${payload.Reason}\n\nSilakan login melalui portal *ECrew Transwisata* untuk akses *ECrew Leaves System* dan memproses pengajuan ini.\n\nTerima kasih.`;
-                
-                if (hInfo?.Phone) triggerWhatsApp(hInfo.Phone, waMsg); 
-                
-                showToast('Berhasil Dikirim!'); 
-                closeRequestModal(); 
-                setTimeout(async () => { await fetchFromSheet(); loadDashboard(); }, 1200); 
+            try {
+                const res = await callGAS('saveRequest', payload);
+                if (res.status === 'success') { 
+                    const waMsg = `*NOTIFIKASI PENGAJUAN CUTI*\n\nYth. ${headPosition},\n\nAda pengajuan cuti baru dari *${currentUser.name}* (${currentUser.data.Position}).\n\n*Detail Pengajuan:*\n- Tipe: ${payload.Type}\n- Periode: ${formatDate(payload.Start)} s/d ${formatDate(payload.End)}\n- Durasi: ${payload.Duration} Hari\n- Alasan: ${payload.Reason}\n\nSilakan login melalui portal *ECrew Transwisata* untuk akses *ECrew Leaves System* dan memproses pengajuan ini.\n\nTerima kasih.`;
+                    if (hInfo?.Phone) triggerWhatsApp(hInfo.Phone, waMsg); 
+                    
+                    showToast('Berhasil Dikirim!'); 
+                    closeRequestModal(); 
+                    setTimeout(async () => { await fetchFromSheet(); loadDashboard(); }, 1200); 
+                } else {
+                    throw new Error(res.message || "Gagal menyimpan di database");
+                }
+            } catch (error) {
+                showToast('Gagal mengirim: ' + error.message, 'error'); 
+                btn.disabled = false; btn.innerText = txt; 
             }
-            else { showToast('Gagal mengirim!', 'error'); btn.disabled = false; btn.innerText = txt; }
         });
 
         function showDetail(id) {
@@ -650,6 +694,7 @@
         function formatDate(d) { 
             if (!d) return "-";
             const date = new Date(d);
+            if (isNaN(date.getTime())) return d;
             return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }); 
         }
         function showToast(msg, type = 'success') { $('toast-msg').innerText = msg; $('toast-icon').className = `w-8 h-8 rounded-full flex items-center justify-center text-sm ${type === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`; $('toast').classList.remove('hidden'); setTimeout(() => $('toast').classList.add('hidden'), 3000); }
