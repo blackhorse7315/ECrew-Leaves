@@ -17,82 +17,30 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
-        }
-
-        .aviation-gradient {
-            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
-        }
-
-        .glass-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .animate-fade-in {
-            animation: fadeIn 0.4s ease-out forwards;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .aviation-gradient { background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        
-        .modal-overlay {
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(4px);
-        }
-
-        #mobile-nav-overlay {
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-        }
-        #mobile-nav-content {
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
+        .modal-overlay { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
+        #mobile-nav-overlay { transition: opacity 0.3s ease, visibility 0.3s ease; }
+        #mobile-nav-content { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .spin-sync { animation: spin 1s linear infinite; }
+        #global-loader { transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, visibility 0.4s; visibility: visible; }
+        .loader-hidden { transform: translateY(150px) !important; opacity: 0 !important; visibility: hidden !important; }
         @media print {
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
-            #print-area {
-                position: absolute; left: 0; top: 0; width: 100%; padding: 40px; background: white;
-            }
+            #print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 40px; background: white; }
             .no-print { display: none !important; }
-        }
-
-        .loader {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #3498db;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        .spin-sync {
-            animation: spin 1s linear infinite;
-        }
-
-        #global-loader {
-            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, visibility 0.4s;
-            visibility: visible;
-        }
-        .loader-hidden {
-            transform: translateY(150px) !important;
-            opacity: 0 !important;
-            visibility: hidden !important;
         }
     </style>
 </head>
 <body class="text-slate-800">
 
-    <!-- STATUS SYNC -->
     <div id="global-loader" class="fixed bottom-6 right-6 z-[300] bg-white/90 backdrop-blur-md px-5 py-4 rounded-[1.5rem] shadow-2xl border border-blue-100 flex items-center gap-4 animate-fade-in">
         <div class="loader w-6 h-6 border-2 border-slate-100 border-top-blue-600"></div>
         <div>
@@ -101,73 +49,38 @@
         </div>
     </div>
 
-    <!-- LOGIN PAGE -->
     <div id="login-page" class="fixed inset-0 z-[100] aviation-gradient flex items-center justify-center p-4">
         <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden animate-fade-in">
             <div class="p-10">
                 <div class="flex items-center gap-4 mb-8 justify-center">
-                    <div class="h-16 w-auto">
-                        <img src="https://lh3.googleusercontent.com/d/14XvFbNETCuybdeUeH6BPrPaC33uBijMc" alt="Logo" class="h-full object-contain" />
-                    </div>
-                    <div class="text-left">
-                        <h1 class="text-xs font-black tracking-[0.2em] uppercase text-blue-900 opacity-60">Transwisata</h1>
-                        <p class="text-xl font-black leading-tight text-blue-900">Prima Aviation</p>
-                    </div>
+                    <div class="h-16 w-auto"><img src="https://lh3.googleusercontent.com/d/14XvFbNETCuybdeUeH6BPrPaC33uBijMc" alt="Logo" class="h-full object-contain" /></div>
+                    <div class="text-left"><h1 class="text-xs font-black tracking-[0.2em] uppercase text-blue-900 opacity-60">Transwisata</h1><p class="text-xl font-black leading-tight text-blue-900">Prima Aviation</p></div>
                 </div>
                 <div class="space-y-6">
-                    <div class="text-center">
-                        <h2 class="text-xl font-bold text-slate-800">ECrew Leaves System</h2>
-                        <p class="text-xs text-slate-500 mt-1">Portal Manajemen Cuti Internal</p>
-                    </div>
+                    <div class="text-center"><h2 class="text-xl font-bold text-slate-800">ECrew Leaves System</h2><p class="text-xs text-slate-500 mt-1">Portal Manajemen Cuti Internal</p></div>
                     <form id="login-form" class="space-y-4">
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Username</label>
-                            <div class="relative">
-                                <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
-                                <input type="text" id="username" placeholder="Username" required
-                                    class="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-medium text-sm">
-                            </div>
-                        </div>
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
-                            <div class="relative">
-                                <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
-                                <input type="password" id="password" placeholder="••••••••" required
-                                    class="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-medium text-sm">
-                            </div>
-                        </div>
-                        <button type="submit" id="login-btn" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-xl shadow-blue-200 transition-all active:scale-95">
-                            Sign In
-                        </button>
+                        <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Username</label><div class="relative"><i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></i><input type="text" id="username" placeholder="Username" required class="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-medium text-sm"></div></div>
+                        <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label><div class="relative"><i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></i><input type="password" id="password" placeholder="••••••••" required class="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-100 outline-none transition-all font-medium text-sm"></div></div>
+                        <button type="submit" id="login-btn" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-xl shadow-blue-200 transition-all active:scale-95">Sign In</button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MAIN APP WRAPPER -->
     <div id="app-wrapper" class="hidden flex h-screen overflow-hidden">
-        <!-- Sidebar Desktop -->
         <aside class="w-64 aviation-gradient text-white hidden md:flex flex-col shadow-2xl">
             <div class="p-6">
                 <div class="flex items-center gap-3 mb-8">
-                    <div class="h-10 w-10 shrink-0 bg-white p-1 rounded-lg">
-                        <img src="https://lh3.googleusercontent.com/d/14XvFbNETCuybdeUeH6BPrPaC33uBijMc" alt="Logo" class="w-full h-full object-contain" />
-                    </div>
-                    <div>
-                        <h1 class="text-[10px] font-bold tracking-widest uppercase opacity-80">Transwisata</h1>
-                        <p class="text-sm font-black leading-tight text-white">Prima Aviation</p>
-                    </div>
+                    <div class="h-10 w-10 shrink-0 bg-white p-1 rounded-lg"><img src="https://lh3.googleusercontent.com/d/14XvFbNETCuybdeUeH6BPrPaC33uBijMc" alt="Logo" class="w-full h-full object-contain" /></div>
+                    <div><h1 class="text-[10px] font-bold tracking-widest uppercase opacity-80">Transwisata</h1><p class="text-sm font-black leading-tight text-white">Prima Aviation</p></div>
                 </div>
                 <nav class="space-y-1" id="dynamic-nav"></nav>
             </div>
             <div class="mt-auto p-6 bg-blue-900/30">
                 <div class="flex items-center gap-3 mb-4">
                     <img id="user-avatar" src="" class="w-10 h-10 rounded-full border-2 border-blue-400 shadow-md" alt="User">
-                    <div class="overflow-hidden">
-                        <p id="user-name" class="text-sm font-bold truncate">Nama User</p>
-                        <p id="user-role-label" class="text-[10px] uppercase opacity-70 tracking-tighter">Role</p>
-                    </div>
+                    <div class="overflow-hidden"><p id="user-name" class="text-sm font-bold truncate">Nama User</p><p id="user-role-label" class="text-[10px] uppercase opacity-70 tracking-tighter">Role</p></div>
                 </div>
                 <button onclick="logout()" class="w-full py-2.5 px-4 rounded-xl bg-red-500/10 hover:bg-red-500/30 text-red-200 text-xs font-bold flex items-center justify-center gap-2 transition-all group">
                     <i class="fas fa-sign-out-alt group-hover:-translate-x-1 transition-transform"></i> Logout
@@ -175,7 +88,6 @@
             </div>
         </aside>
 
-        <!-- Menu Mobile Overlay & Sidebar -->
         <div id="mobile-nav-overlay" class="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm invisible opacity-0 md:hidden" onclick="toggleMobileMenu()">
             <div id="mobile-nav-content" class="w-72 h-full aviation-gradient shadow-2xl flex flex-col -translate-x-full" onclick="event.stopPropagation()">
                 <div class="p-6 border-b border-white/10 flex justify-between items-center">
@@ -183,14 +95,10 @@
                     <button onclick="toggleMobileMenu()" class="text-white/70 hover:text-white"><i class="fas fa-times text-xl"></i></button>
                 </div>
                 <div class="p-4 flex-1 overflow-y-auto no-scrollbar" id="mobile-dynamic-nav"></div>
-                
                 <div class="p-6 bg-blue-900/30 mt-auto border-t border-white/5">
                     <div class="flex items-center gap-3 mb-4">
                         <img id="mobile-user-avatar" src="" class="w-10 h-10 rounded-full border-2 border-blue-400 shadow-md" alt="User">
-                        <div class="overflow-hidden">
-                            <p id="mobile-user-name" class="text-sm font-bold truncate text-white">Nama User</p>
-                            <p id="mobile-user-role-label" class="text-[10px] uppercase text-white/70 tracking-tighter">Role</p>
-                        </div>
+                        <div class="overflow-hidden"><p id="mobile-user-name" class="text-sm font-bold truncate text-white">Nama User</p><p id="mobile-user-role-label" class="text-[10px] uppercase text-white/70 tracking-tighter">Role</p></div>
                     </div>
                     <button onclick="logout()" class="w-full py-3.5 px-4 rounded-xl bg-red-500/20 hover:bg-red-500/40 text-red-100 text-xs font-bold flex items-center justify-center gap-2 transition-all">
                         <i class="fas fa-sign-out-alt"></i> Logout
@@ -220,10 +128,7 @@
     <div id="modal-edit-form" class="fixed inset-0 z-[190] modal-overlay hidden items-center justify-center p-4">
         <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
             <div id="edit-form-header" class="p-6 md:p-8 aviation-gradient text-white flex justify-between items-center shrink-0">
-                <div>
-                    <h3 id="edit-form-title" class="text-lg md:text-xl font-black uppercase tracking-tight">Formulir Data</h3>
-                    <p id="edit-form-subtitle" class="text-[10px] opacity-70 font-bold uppercase tracking-widest">Manajemen</p>
-                </div>
+                <div><h3 id="edit-form-title" class="text-lg md:text-xl font-black uppercase tracking-tight">Formulir Data</h3><p id="edit-form-subtitle" class="text-[10px] opacity-70 font-bold uppercase tracking-widest">Manajemen</p></div>
                 <button onclick="closeEditModal()" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"><i class="fas fa-times"></i></button>
             </div>
             <form id="dynamic-edit-form" class="p-6 md:p-10 space-y-6 overflow-y-auto no-scrollbar">
@@ -307,11 +212,10 @@
     <div id="toast" class="fixed bottom-8 right-8 z-[250] hidden animate-fade-in"><div class="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/10"><div id="toast-icon" class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm"><i class="fas fa-check"></i></div><p id="toast-msg" class="text-sm font-bold">Berhasil</p></div></div>
 
     <script>
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzvdLA41BHtU4aViGQZ5Eh2NjRsrH1yIRhGB2pyV8nQC1dNWCKjDRV6er309xOOYAaxyA/exec";
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycby6emc8TevvAhAzCzt-aMq3pe2WP34VcLBUU5PQCLUNuHx_C3sB3esubXvyABixUeRk7A/exec";
 
         const DIVISIONS = ["Operation", "Maintenance", "Safety", "Staf"];
         const POSITIONS = ["Director", "Safety, Quality & Security Manager", "General Manager", "Operation Manager", "Maintenance Manager", "Chief Pilot Fixed Wing", "Chief Pilot Rotary Wing", "Chief Flight Support", "Chief Engineer", "Chief Inspector", "Chief Finance, Accounting & Tax", "Human Resource Development", "Line Pilot", "Engineer", "Cabin Service", "Staf", "Flight Support", "Ground Support", "Finance", "Logistic", "Aviation Security", "Kurir", "Driver"];
-        
         const HEAD_POSITIONS = ["Quality, Safety, Security Manager", "General Manager", "Operation Manager", "Maintenance Manager", "Chief Pilot Rotary Wing", "Chief Pilot Fixed Wing", "Chief Flight Support", "Chief Engineer", "HRD"];
 
         const SPECIAL_LEAVE_RULES = {
@@ -343,12 +247,10 @@
                     leaveRequests = result.data.requests || [];
                     if(result.data.profile) result.data.profile.forEach(p => hrdProfile[p.Key] = p.Value);
                     
-                    // Update currentUser data reference from the newly fetched users list
                     if (currentUser && currentUser.data) {
-                        const updated = users.find(u => u.ID === currentUser.data.ID);
+                        const updated = users.find(u => u.ID.toString() === currentUser.data.ID.toString());
                         if (updated) currentUser.data = updated;
                     }
-
                     return true;
                 }
             } catch (err) { 
@@ -382,15 +284,18 @@
 
         async function callGAS(action, data = {}) {
             try { 
-                await fetch(GAS_API_URL, { 
+                const res = await fetch(GAS_API_URL, { 
                     method: 'POST', 
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' }, 
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
                     body: JSON.stringify({ action, data }),
                     redirect: 'follow'
                 }); 
-                return { status: 'success' }; 
-            } catch (err) { return { status: 'error' }; }
+                const result = await res.json();
+                return result; 
+            } catch (err) { 
+                console.error('GAS Error:', err);
+                return { status: 'error' }; 
+            }
         }
 
         async function logout() {
@@ -413,10 +318,10 @@
                 const parts = line.split('|').map(p => p.trim());
                 if (parts.length >= 7) {
                     const payload = {
-                        id: 'USR-' + Math.floor(1000 + Math.random()*9000),
-                        name: parts[0], division: parts[1], position: parts[2], email: parts[3], phone: parts[4],
-                        annualquota: parseInt(parts[5]) || 12, specialquota: parseInt(parts[6]) || 40,
-                        username: parts[7] || parts[3], password: parts[8] || 'TWA-Pass'
+                        ID: 'USR-' + Math.floor(1000 + Math.random()*9000),
+                        Name: parts[0], Division: parts[1], Position: parts[2], Email: parts[3], Phone: parts[4],
+                        AnnualQuota: parseInt(parts[5]) || 12, SpecialQuota: parseInt(parts[6]) || 40,
+                        Username: parts[7] || parts[3], Password: parts[8] || 'TWA-Pass'
                     };
                     await callGAS('saveUser', payload);
                     count++;
@@ -478,19 +383,40 @@
         function openEditModal(type, id = null) {
             const isEdit = id !== null;
             currentEditType = type;
-            const data = isEdit ? (type === 'staff' ? users.find(u => u.ID === id) : heads.find(h => h.ID === id)) : null;
+            const data = isEdit ? (type === 'staff' ? users.find(u => u.ID.toString() === id.toString()) : heads.find(h => h.ID.toString() === id.toString())) : null;
             editingUserId = (type === 'staff') ? id : null; 
             editingHeadId = (type === 'head') ? id : null;
             $('edit-form-title').innerText = isEdit ? 'Edit Data' : 'Tambah Baru';
             $('edit-form-subtitle').innerText = type === 'staff' ? 'Karyawan / Staf' : 'Head of Department';
             const container = $('dynamic-fields-container'); container.innerHTML = '';
-            const fields = [{ id: 'f-name', label: 'Nama Lengkap', type: 'text', value: data?.Name || '', full: true }, { id: 'f-division', label: 'Divisi', type: 'select', options: DIVISIONS, value: data?.Division || '' }, { id: 'f-position', label: 'Jabatan', type: 'select', options: type === 'staff' ? POSITIONS : HEAD_POSITIONS, value: data?.Position || '' }, { id: 'f-email', label: 'Email', type: 'email', value: data?.Email || '' }, { id: 'f-phone', label: 'WhatsApp', type: 'text', value: data?.Phone || '' }];
-            if (type === 'staff') { fields.push({ id: 'f-annual', label: 'Annual Balance (Sisa Saldo)', type: 'number', value: data?.AnnualQuota || 0 }, { id: 'f-special', label: 'Special Balance (Sisa Saldo)', type: 'number', value: data?.SpecialQuota || 0 }); }
-            fields.push({ id: 'f-user', label: 'Username', type: 'text', value: data?.Username || '' }, { id: 'f-pass', label: 'Password', type: 'text', value: data?.Password || '' });
+            
+            const fields = [
+                { id: 'f-name', label: 'Nama Lengkap', type: 'text', key: 'Name', value: data?.Name || '', full: true }, 
+                { id: 'f-division', label: 'Divisi', type: 'select', key: 'Division', options: DIVISIONS, value: data?.Division || '' }, 
+                { id: 'f-position', label: 'Jabatan', type: 'select', key: 'Position', options: type === 'staff' ? POSITIONS : HEAD_POSITIONS, value: data?.Position || '' }, 
+                { id: 'f-email', label: 'Email', type: 'email', key: 'Email', value: data?.Email || '' }, 
+                { id: 'f-phone', label: 'WhatsApp', type: 'text', key: 'Phone', value: data?.Phone || '' }
+            ];
+
+            if (type === 'staff') { 
+                fields.push(
+                    { id: 'f-annual', label: 'Annual Balance (Sisa Saldo)', key: 'AnnualQuota', type: 'number', value: data?.AnnualQuota || 0 }, 
+                    { id: 'f-special', label: 'Special Balance (Sisa Saldo)', key: 'SpecialQuota', type: 'number', value: data?.SpecialQuota || 0 }
+                ); 
+            }
+            fields.push(
+                { id: 'f-user', label: 'Username', key: 'Username', type: 'text', value: data?.Username || '' }, 
+                { id: 'f-pass', label: 'Password', key: 'Password', type: 'text', value: data?.Password || '' }
+            );
+
             fields.forEach(f => {
                 let html = `<div class="${f.full ? 'md:col-span-2' : ''} space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">${f.label}</label>`;
-                if (f.type === 'select') { html += `<select id="${f.id}" required class="w-full px-4 py-3 rounded-2xl border bg-slate-50 font-semibold text-sm">${f.options.map(opt => `<option value="${opt}" ${f.value === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>`; }
-                else { html += `<input type="${f.type}" id="${f.id}" value="${f.value}" required class="w-full px-4 py-3 rounded-2xl border bg-slate-50 font-semibold text-sm">`; }
+                if (f.type === 'select') { 
+                    html += `<select id="${f.id}" data-key="${f.key}" required class="w-full px-4 py-3 rounded-2xl border bg-slate-50 font-semibold text-sm">${f.options.map(opt => `<option value="${opt}" ${f.value === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>`; 
+                }
+                else { 
+                    html += `<input type="${f.type}" id="${f.id}" data-key="${f.key}" value="${f.value}" required class="w-full px-4 py-3 rounded-2xl border bg-slate-50 font-semibold text-sm">`; 
+                }
                 container.innerHTML += html + `</div>`;
             });
             $('modal-edit-form').classList.remove('hidden'); $('modal-edit-form').classList.add('flex');
@@ -502,11 +428,22 @@
             e.preventDefault(); 
             const type = currentEditType;
             showToast('Sedang menyimpan data...', 'success');
-            let payload = { id: (type === 'staff' ? editingUserId : editingHeadId) || (type === 'staff' ? 'USR-' : 'HEAD-') + Math.floor(1000 + Math.random()*9000), name: $('f-name').value, division: $('f-division').value, position: $('f-position').value, email: $('f-email').value, phone: $('f-phone').value, username: $('f-user').value, password: $('f-pass').value };
-            if (type === 'staff') { payload.annualquota = parseInt($('f-annual').value); payload.specialquota = parseInt($('f-special').value); }
+            
+            let payload = { ID: (type === 'staff' ? editingUserId : editingHeadId) || (type === 'staff' ? 'USR-' : 'HEAD-') + Math.floor(1000 + Math.random()*9000) };
+            const inputs = e.target.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                const key = input.getAttribute('data-key');
+                if (key) payload[key] = input.value;
+            });
+            
             closeEditModal(); 
-            await callGAS(type === 'staff' ? 'saveUser' : 'saveHead', payload);
-            setTimeout(async () => { await fetchFromSheet(); type === 'staff' ? loadEmployeeManagerUI() : loadHeadManagerUI(); showToast('Data Berhasil Disimpan!'); }, 1000);
+            const res = await callGAS(type === 'staff' ? 'saveUser' : 'saveHead', payload);
+            if (res.status === 'success') {
+                showToast('Data Berhasil Disimpan!');
+                setTimeout(async () => { await fetchFromSheet(); type === 'staff' ? loadEmployeeManagerUI() : loadHeadManagerUI(); }, 800);
+            } else {
+                showToast('Gagal menyimpan data!', 'error');
+            }
         });
 
         $('login-form').addEventListener('submit', (e) => {
@@ -548,7 +485,7 @@
                 const my = leaveRequests.filter(r => r.Name === currentUser.name); 
                 $('main-content').innerHTML = `<div class="space-y-8 animate-fade-in"><div class="flex justify-between items-center"><h3 class="font-bold text-slate-800">Ringkasan Cuti</h3><button onclick="openRequestModal()" class="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase shadow-lg">Pengajuan Baru</button></div><div class="grid grid-cols-2 md:grid-cols-4 gap-6"><div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Sisa Annual</p><h3 class="text-3xl font-black text-blue-900">${currentUser.data.AnnualQuota || 0}</h3></div><div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Sisa Spesial</p><h3 class="text-3xl font-black text-blue-900">${currentUser.data.SpecialQuota || 0}</h3></div><div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Riwayat Approved</p><h3 class="text-3xl font-black text-emerald-600">${my.filter(r => r.Status === 'APPROVED').length}</h3></div><div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Pending</p><h3 class="text-3xl font-black text-amber-500">${my.filter(r => !['APPROVED','REJECTED','CANCELLED'].includes(r.Status)).length}</h3></div></div></div>`;
             } else {
-                const pending = leaveRequests.filter(r => (currentUser.role === ROLES.HEAD && r.Status === 'HEAD_DEPT_REVIEW' && r.TargetHeadId === currentUser.data.ID) || (currentUser.role === ROLES.HRD && r.Status === 'HRD_APPROVAL'));
+                const pending = leaveRequests.filter(r => (currentUser.role === ROLES.HEAD && r.Status === 'HEAD_DEPT_REVIEW' && r.TargetHeadId.toString() === currentUser.data.ID.toString()) || (currentUser.role === ROLES.HRD && r.Status === 'HRD_APPROVAL'));
                 $('main-content').innerHTML = `<div class="glass-card p-8 rounded-[2rem] bg-amber-50 border-amber-100"><h3 class="text-4xl font-black text-amber-700">${pending.length} Menunggu</h3><p class="text-xs uppercase font-bold text-amber-500 mt-1">Antrean Persetujuan Baru</p></div>`;
             }
         }
@@ -559,7 +496,7 @@
         }
 
         function loadApprovalList() {
-            const pending = leaveRequests.filter(r => (currentUser.role === ROLES.HEAD && r.Status === 'HEAD_DEPT_REVIEW' && r.TargetHeadId === currentUser.data.ID) || (currentUser.role === ROLES.HRD && r.Status === 'HRD_APPROVAL'));
+            const pending = leaveRequests.filter(r => (currentUser.role === ROLES.HEAD && r.Status === 'HEAD_DEPT_REVIEW' && r.TargetHeadId.toString() === currentUser.data.ID.toString()) || (currentUser.role === ROLES.HRD && r.Status === 'HRD_APPROVAL'));
             $('main-content').innerHTML = `<div class="animate-fade-in space-y-6"><h3 class="font-black uppercase text-slate-800">Antrean Persetujuan</h3><div class="grid grid-cols-1 gap-4">${pending.length === 0 ? '<p class="text-slate-400 italic py-10 text-center glass-card rounded-3xl">Tidak ada antrean.</p>' : pending.map(r => `<div class="glass-card p-6 rounded-3xl flex justify-between items-center shadow-sm"><div class="flex items-center gap-4"><button onclick="showDetail('${r.ID}')" class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center transition-all hover:bg-blue-600 hover:text-white"><i class="fas fa-info"></i></button><div><h4 class="font-black text-slate-800">${r.Name}</h4><p class="text-xs font-bold text-blue-600 uppercase">${r.Type}</p><p class="text-[10px] text-slate-500">${formatDate(r.Start)}</p></div></div><div class="flex gap-2"><button onclick="handleApprovalAction('${r.ID}', false)" class="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold text-[10px] uppercase">Tolak</button><button onclick="handleApprovalAction('${r.ID}', true)" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg">Setuju</button></div></div>`).join('')}</div></div>`;
         }
 
@@ -567,21 +504,21 @@
         
         async function confirmApprovalWithNote() {
             const note = $('note-text').value.trim(); 
-            const r = leaveRequests.find(req => req.ID === pendingApprovalId); 
+            const r = leaveRequests.find(req => req.ID.toString() === pendingApprovalId.toString()); 
             if (!r) return;
             
-            const oldStatus = r.Status;
             r.id = r.ID; 
             r.Status = isApproveAction ? (currentUser.role === ROLES.HEAD ? 'HRD_APPROVAL' : 'APPROVED') : 'REJECTED';
-            
             if (currentUser.role === ROLES.HEAD) r.HeadNote = note; else r.HRDNote = note;
             
             closeNoteModal(); 
-            showToast('Memproses & Mengupdate Saldo Permanen...', 'success'); 
+            showToast('Memproses & Mengupdate Database...', 'success'); 
             loadApprovalList(); 
             
+            // Simpan Request
             await callGAS('saveRequest', r);
             
+            // Jika Approved Permanen oleh HRD, potong saldo user
             if (r.Status === 'APPROVED') {
                 const u = users.find(usr => usr.Name === r.Name);
                 if (u) {
@@ -591,16 +528,17 @@
                     } else {
                         u.SpecialQuota = Math.max(0, (parseInt(u.SpecialQuota) || 0) - dur);
                     }
+                    u.id = u.ID; // Pastikan ID ada untuk update
                     await callGAS('saveUser', u);
                 }
             }
             
-            setTimeout(async () => { await fetchFromSheet(); switchTab('approval'); showToast('Keputusan & Saldo Sisa Disimpan ke Database!'); }, 800);
+            setTimeout(async () => { await fetchFromSheet(); switchTab('approval'); showToast('Keputusan & Saldo Sisa Disimpan!'); }, 800);
         }
 
         async function cancelRequest(id) { 
             if(!confirm("Batalkan pengajuan ini? Saldo akan dikembalikan otomatis.")) return; 
-            const r = leaveRequests.find(req => req.ID === id); 
+            const r = leaveRequests.find(req => req.ID.toString() === id.toString()); 
             if (!r) return; 
             
             const oldStatus = r.Status;
@@ -619,11 +557,11 @@
                     } else {
                         u.SpecialQuota = (parseInt(u.SpecialQuota) || 0) + dur;
                     }
+                    u.id = u.ID;
                     await callGAS('saveUser', u);
                 }
             }
-
-            setTimeout(async () => { await fetchFromSheet(); loadHistory(); showToast('Cuti Dibatalkan & Saldo Pulih di Database!'); }, 800); 
+            setTimeout(async () => { await fetchFromSheet(); loadHistory(); showToast('Saldo Pulih di Database!'); }, 800); 
         }
 
         function closeNoteModal() { $('note-text').value = ''; $('modal-note').classList.add('hidden'); $('modal-note').classList.remove('flex'); }
@@ -647,107 +585,43 @@
         }
         function closeRequestModal() { $('modal-request').classList.add('hidden'); $('modal-request').classList.remove('flex'); }
 
-        function handleDateChange() {
-            if (SPECIAL_LEAVE_RULES[$('r-type').value]) autoCalculateEndDate(); 
-            updateDur(); 
-        }
+        function handleDateChange() { if (SPECIAL_LEAVE_RULES[$('r-type').value]) autoCalculateEndDate(); updateDur(); }
+        function onLeaveTypeChange() { const type = $('r-type').value; const end = $('r-end'); if (SPECIAL_LEAVE_RULES[type]) { end.readOnly = true; end.classList.add('bg-slate-100'); autoCalculateEndDate(); } else { end.readOnly = false; end.classList.remove('bg-slate-100'); } updateDur(); }
+        function autoCalculateEndDate() { const type = $('r-type').value; const start = $('r-start').value; const dur = SPECIAL_LEAVE_RULES[type]; if (start && dur) { const sd = new Date(start); const ed = new Date(sd); ed.setDate(sd.getDate() + (dur - 1)); $('r-end').value = ed.toISOString().split('T')[0]; } }
 
-        function onLeaveTypeChange() {
-            const type = $('r-type').value; const end = $('r-end');
-            if (SPECIAL_LEAVE_RULES[type]) { 
-                end.readOnly = true; 
-                end.classList.add('bg-slate-100'); 
-                autoCalculateEndDate(); 
-            } else { 
-                end.readOnly = false; 
-                end.classList.remove('bg-slate-100'); 
-            } 
-            updateDur();
-        }
-
-        function autoCalculateEndDate() {
-            const type = $('r-type').value; const start = $('r-start').value; const dur = SPECIAL_LEAVE_RULES[type];
-            if (start && dur) { 
-                const sd = new Date(start); 
-                const ed = new Date(sd); 
-                ed.setDate(sd.getDate() + (dur - 1)); 
-                $('r-end').value = ed.toISOString().split('T')[0]; 
-            }
-        }
-
-        // PERBAIKAN: Validasi kuota cuti secara real-time
         function updateDur() {
             const s = $('r-start').value; const e = $('r-end').value; const type = $('r-type').value;
             let duration = 0;
-
-            if (SPECIAL_LEAVE_RULES[type]) { 
-                duration = SPECIAL_LEAVE_RULES[type];
-            } else if (s && e) { 
-                const start = new Date(s); 
-                const end = new Date(e); 
-                duration = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1; 
-                if (duration < 0) duration = 0;
-            }
-
+            if (SPECIAL_LEAVE_RULES[type]) duration = SPECIAL_LEAVE_RULES[type];
+            else if (s && e) { const start = new Date(s); const end = new Date(e); duration = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1; if (duration < 0) duration = 0; }
             $('r-duration-view').innerText = duration + " Hari"; 
 
-            // Validasi sisa saldo
             if (currentUser && currentUser.data && duration > 0 && type !== "") {
                 const annualQuota = parseInt(currentUser.data.AnnualQuota) || 0;
                 const specialQuota = parseInt(currentUser.data.SpecialQuota) || 0;
                 let isExceeding = false;
+                if (type === 'Annual Leave') { if (duration > annualQuota) isExceeding = true; }
+                else { if (duration > specialQuota) isExceeding = true; }
 
-                if (type === 'Annual Leave') {
-                    if (duration > annualQuota) isExceeding = true;
-                } else {
-                    // Semua selain Annual Leave memotong Special Quota
-                    if (duration > specialQuota) isExceeding = true;
-                }
-
-                const warning = $('r-quota-warning');
-                const view = $('r-duration-view');
-                const btn = $('r-submit-btn');
-
-                if (isExceeding) {
-                    warning.classList.remove('hidden');
-                    view.classList.replace('text-blue-700', 'text-red-500');
-                    btn.disabled = true;
-                    btn.classList.add('opacity-50', 'cursor-not-allowed');
-                } else {
-                    warning.classList.add('hidden');
-                    view.classList.replace('text-red-500', 'text-blue-700');
-                    btn.disabled = false;
-                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
-                }
+                const warning = $('r-quota-warning'); const view = $('r-duration-view'); const btn = $('r-submit-btn');
+                if (isExceeding) { warning.classList.remove('hidden'); view.classList.replace('text-blue-700', 'text-red-500'); btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); }
+                else { warning.classList.add('hidden'); view.classList.replace('text-red-500', 'text-blue-700'); btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); }
             }
         }
 
         $('leave-request-form').addEventListener('submit', async (e) => {
-            e.preventDefault(); 
-            const btn = $('r-submit-btn');
-            if (btn.disabled) return; // Keamanan tambahan
-
-            const txt = btn.innerText;
-            btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Mengirim...`; 
+            e.preventDefault(); const btn = $('r-submit-btn'); if (btn.disabled) return;
+            const txt = btn.innerText; btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Mengirim...`; 
             showToast('Sedang memproses...', 'success');
-            
-            const hInfo = heads.find(h => h.ID === $('r-target-head').value);
-            const payload = { id: 'TWA-' + Math.floor(1000 + Math.random()*9000), name: currentUser.name, division: currentUser.data.Division, position: currentUser.data.Position, targetheadid: $('r-target-head').value, type: $('r-type').value, duration: parseInt($('r-duration-view').innerText), start: $('r-start').value, end: $('r-end').value, status: 'HEAD_DEPT_REVIEW', reason: $('r-reason').value, handover: $('r-handover').value, phone: currentUser.data.Phone };
+            const hInfo = heads.find(h => h.ID.toString() === $('r-target-head').value.toString());
+            const payload = { ID: 'TWA-' + Math.floor(1000 + Math.random()*9000), Name: currentUser.name, Division: currentUser.data.Division, Position: currentUser.data.Position, TargetHeadId: $('r-target-head').value, Type: $('r-type').value, Duration: parseInt($('r-duration-view').innerText), Start: $('r-start').value, End: $('r-end').value, Status: 'HEAD_DEPT_REVIEW', Reason: $('r-reason').value, Handover: $('r-handover').value, Phone: currentUser.data.Phone };
             const res = await callGAS('saveRequest', payload);
-            
-            if (res.status === 'success') { 
-                if (hInfo?.Phone) triggerWhatsApp(hInfo.Phone, `Ada pengajuan cuti baru dari ${currentUser.name}.`); 
-                showToast('Berhasil Dikirim!'); 
-                closeRequestModal(); 
-                setTimeout(async () => { await fetchFromSheet(); loadDashboard(); }, 1200); 
-            } else { 
-                showToast('Gagal mengirim pengajuan!', 'error'); 
-                btn.disabled = false; btn.innerText = txt; 
-            }
+            if (res.status === 'success') { if (hInfo?.Phone) triggerWhatsApp(hInfo.Phone, `Ada pengajuan cuti baru dari ${currentUser.name}.`); showToast('Berhasil Dikirim!'); closeRequestModal(); setTimeout(async () => { await fetchFromSheet(); loadDashboard(); }, 1200); }
+            else { showToast('Gagal mengirim!', 'error'); btn.disabled = false; btn.innerText = txt; }
         });
 
         function showDetail(id) {
-            const r = leaveRequests.find(req => req.ID === id); if (!r) return;
+            const r = leaveRequests.find(req => req.ID.toString() === id.toString()); if (!r) return;
             $('detail-id').innerText = '#' + r.ID;
             let statusClass = 'bg-amber-100 text-amber-600'; if(r.Status === 'APPROVED') statusClass = 'bg-emerald-100 text-emerald-600'; if(r.Status === 'REJECTED') statusClass = 'bg-red-100 text-red-600';
             $('modal-body').innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm"><div class="space-y-4"><div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Karyawan</p><p class="font-bold">${r.Name}</p></div><div><p class="text-[10px] font-black text-slate-400 uppercase">Jabatan</p><p class="font-semibold">${r.Position}</p></div><div><p class="text-[10px] font-black text-slate-400 uppercase">Tipe</p><p class="font-bold text-blue-700">${r.Type}</p></div></div><div class="space-y-4"><div><p class="text-[10px] font-black text-slate-400 uppercase">Periode</p><p class="font-bold">${formatDate(r.Start)} - ${formatDate(r.End)}</p><p class="text-xs font-bold text-blue-600">${r.Duration} Hari</p></div><div><p class="text-[10px] font-black text-slate-400 uppercase">Status</p><span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${statusClass}">${r.Status}</span></div></div><div class="md:col-span-2 pt-4 border-t"><p class="text-[10px] font-black text-slate-400 uppercase mb-1">Alasan</p><p class="italic text-slate-600 bg-slate-50 p-4 rounded-2xl">"${r.Reason}"</p></div></div>`;
@@ -760,7 +634,7 @@
         function toggleMobileMenu() { isMobileMenuOpen = !isMobileMenuOpen; $('mobile-nav-overlay').classList.toggle('invisible'); $('mobile-nav-overlay').classList.toggle('opacity-0'); $('mobile-nav-content').classList.toggle('-translate-x-full'); }
 
         function showUserCard(id, type) {
-            const user = type === 'staff' ? users.find(u => u.ID === id) : heads.find(h => h.ID === id); if (!user) return;
+            const user = type === 'staff' ? users.find(u => u.ID.toString() === id.toString()) : heads.find(h => h.ID.toString() === id.toString()); if (!user) return;
             $('card-name').innerText = user.Name; $('card-role').innerText = user.Position;
             $('card-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.Name)}&background=${type==='head'?'059669':'1e3a8a'}&color=fff&bold=true&size=128`;
             const editBtn = $('card-edit-btn'); const dupBtn = $('card-duplicate-btn'); const delBtn = $('card-delete-btn');
@@ -772,13 +646,9 @@
             $('modal-user-card').classList.remove('hidden'); $('modal-user-card').classList.add('flex');
         }
         function closeUserCard() { $('modal-user-card').classList.add('hidden'); }
-        function duplicateData(id, type) { const s = type === 'staff' ? users.find(u => u.ID === id) : heads.find(h => h.ID === id); if (!s) return; openEditModal(type); setTimeout(() => { $('f-name').value = s.Name + " (Copy)"; $('f-division').value = s.Division; $('f-position').value = s.Position; $('f-email').value = "copy." + s.Email; $('f-phone').value = s.Phone; $('f-user').value = s.Username + "_copy"; $('f-pass').value = s.Password; if(type==='staff'){$('f-annual').value=s.AnnualQuota; $('f-special').value=s.SpecialQuota;} showToast('Data disalin ke form.', 'success'); }, 200); }
+        function duplicateData(id, type) { const s = type === 'staff' ? users.find(u => u.ID.toString() === id.toString()) : heads.find(h => h.ID.toString() === id.toString()); if (!s) return; openEditModal(type); setTimeout(() => { $('f-name').value = s.Name + " (Copy)"; $('f-division').value = s.Division; $('f-position').value = s.Position; $('f-email').value = "copy." + s.Email; $('f-phone').value = s.Phone; $('f-user').value = s.Username + "_copy"; $('f-pass').value = s.Password; if(type==='staff'){$('f-annual').value=s.AnnualQuota; $('f-special').value=s.SpecialQuota;} showToast('Data disalin ke form.', 'success'); }, 200); }
 
-        window.onload = async () => { 
-            $('current-date').innerText = formatDate(new Date()); 
-            await fetchFromSheet(); 
-            $('global-loader').classList.add('loader-hidden'); 
-        };
+        window.onload = async () => { $('current-date').innerText = formatDate(new Date()); await fetchFromSheet(); $('global-loader').classList.add('loader-hidden'); };
     </script>
 </body>
 </html>
