@@ -147,6 +147,7 @@
 
     <!-- MAIN APP WRAPPER -->
     <div id="app-wrapper" class="hidden flex h-screen overflow-hidden">
+        <!-- Sidebar Desktop -->
         <aside class="w-64 aviation-gradient text-white hidden md:flex flex-col shadow-2xl">
             <div class="p-6">
                 <div class="flex items-center gap-3 mb-8">
@@ -174,13 +175,28 @@
             </div>
         </aside>
 
+        <!-- Menu Mobile Overlay & Sidebar -->
         <div id="mobile-nav-overlay" class="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm invisible opacity-0 md:hidden" onclick="toggleMobileMenu()">
             <div id="mobile-nav-content" class="w-72 h-full aviation-gradient shadow-2xl flex flex-col -translate-x-full" onclick="event.stopPropagation()">
                 <div class="p-6 border-b border-white/10 flex justify-between items-center">
                     <div class="flex items-center gap-3"><img src="https://lh3.googleusercontent.com/d/14XvFbNETCuybdeUeH6BPrPaC33uBijMc" alt="Logo" class="h-8 bg-white p-1 rounded" /><span class="font-bold text-white uppercase text-xs tracking-widest">Menu</span></div>
                     <button onclick="toggleMobileMenu()" class="text-white/70 hover:text-white"><i class="fas fa-times text-xl"></i></button>
                 </div>
-                <div class="p-4 flex-1 overflow-y-auto" id="mobile-dynamic-nav"></div>
+                <div class="p-4 flex-1 overflow-y-auto no-scrollbar" id="mobile-dynamic-nav"></div>
+                
+                <!-- PERBAIKAN: Tombol Logout di Mobile -->
+                <div class="p-6 bg-blue-900/30 mt-auto border-t border-white/5">
+                    <div class="flex items-center gap-3 mb-4">
+                        <img id="mobile-user-avatar" src="" class="w-10 h-10 rounded-full border-2 border-blue-400 shadow-md" alt="User">
+                        <div class="overflow-hidden">
+                            <p id="mobile-user-name" class="text-sm font-bold truncate text-white">Nama User</p>
+                            <p id="mobile-user-role-label" class="text-[10px] uppercase text-white/70 tracking-tighter">Role</p>
+                        </div>
+                    </div>
+                    <button onclick="logout()" class="w-full py-3.5 px-4 rounded-xl bg-red-500/20 hover:bg-red-500/40 text-red-100 text-xs font-bold flex items-center justify-center gap-2 transition-all">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -309,18 +325,15 @@
         let pendingApprovalId = null; let isApproveAction = true; let isMobileMenuOpen = false; let isSyncing = false;
         const $ = (id) => document.getElementById(id);
 
-        // PERBAIKAN: Fungsi fetch yang lebih kuat untuk GAS
         async function fetchFromSheet() {
             try {
                 const res = await fetch(GAS_API_URL, { 
                     method: 'POST', 
                     body: JSON.stringify({ action: 'fetchAll' }),
-                    redirect: 'follow', // Pastikan redirect diikuti
+                    redirect: 'follow',
                     mode: 'cors'
                 });
-                
                 if (!res.ok) throw new Error('Network response was not ok');
-                
                 const result = await res.json();
                 if (result.status === 'success') {
                     users = result.data.users || []; 
@@ -331,7 +344,6 @@
                 }
             } catch (err) { 
                 console.error('Fetch error:', err);
-                // Berikan pesan status yang lebih detail jika gagal
                 if ($('sync-status-text')) $('sync-status-text').innerText = "Gagal menghubungkan ke Database";
             } 
             return false;
@@ -343,9 +355,7 @@
             $('sync-btn').classList.add('opacity-50'); 
             $('global-loader').classList.remove('loader-hidden');
             $('sync-status-text').innerText = "Menghubungkan ke Database...";
-
             const success = await fetchFromSheet();
-            
             setTimeout(() => { 
                 $('sync-icon').classList.remove('spin-sync'); 
                 $('sync-btn').classList.remove('opacity-50'); 
@@ -365,15 +375,13 @@
             try { 
                 await fetch(GAS_API_URL, { 
                     method: 'POST', 
-                    mode: 'no-cors', // Mode no-cors untuk kirim data satu arah (save)
+                    mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' }, 
                     body: JSON.stringify({ action, data }),
                     redirect: 'follow'
                 }); 
                 return { status: 'success' }; 
-            } catch (err) { 
-                return { status: 'error' }; 
-            }
+            } catch (err) { return { status: 'error' }; }
         }
 
         async function logout() {
@@ -390,7 +398,6 @@
             if (!inputEl) return;
             const text = inputEl.value.trim();
             if (!text) return;
-            
             const lines = text.split('\n');
             let count = 0;
             for (let line of lines) {
@@ -467,17 +474,12 @@
             const data = isEdit ? (type === 'staff' ? users.find(u => u.ID === id) : heads.find(h => h.ID === id)) : null;
             editingUserId = (type === 'staff') ? id : null; 
             editingHeadId = (type === 'head') ? id : null;
-            
             $('edit-form-title').innerText = isEdit ? 'Edit Data' : 'Tambah Baru';
             $('edit-form-subtitle').innerText = type === 'staff' ? 'Karyawan / Staf' : 'Head of Department';
             const container = $('dynamic-fields-container'); container.innerHTML = '';
             const fields = [{ id: 'f-name', label: 'Nama Lengkap', type: 'text', value: data?.Name || '', full: true }, { id: 'f-division', label: 'Divisi', type: 'select', options: DIVISIONS, value: data?.Division || '' }, { id: 'f-position', label: 'Jabatan', type: 'select', options: type === 'staff' ? POSITIONS : HEAD_POSITIONS, value: data?.Position || '' }, { id: 'f-email', label: 'Email', type: 'email', value: data?.Email || '' }, { id: 'f-phone', label: 'WhatsApp', type: 'text', value: data?.Phone || '' }];
-            
-            if (type === 'staff') { 
-                fields.push({ id: 'f-annual', label: 'Annual Quota', type: 'number', value: data?.AnnualQuota || 12 }, { id: 'f-special', label: 'Special Quota', type: 'number', value: data?.SpecialQuota || 40 }); 
-            }
+            if (type === 'staff') { fields.push({ id: 'f-annual', label: 'Annual Quota', type: 'number', value: data?.AnnualQuota || 12 }, { id: 'f-special', label: 'Special Quota', type: 'number', value: data?.SpecialQuota || 40 }); }
             fields.push({ id: 'f-user', label: 'Username', type: 'text', value: data?.Username || '' }, { id: 'f-pass', label: 'Password', type: 'text', value: data?.Password || '' });
-            
             fields.forEach(f => {
                 let html = `<div class="${f.full ? 'md:col-span-2' : ''} space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">${f.label}</label>`;
                 if (f.type === 'select') { html += `<select id="${f.id}" required class="w-full px-4 py-3 rounded-2xl border bg-slate-50 font-semibold text-sm">${f.options.map(opt => `<option value="${opt}" ${f.value === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select>`; }
@@ -510,8 +512,18 @@
         function loginAs(role, name, data = null) {
             currentUser = { role, name, data }; $('login-page').classList.add('hidden'); $('app-wrapper').classList.remove('hidden');
             const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e3a8a&color=fff&bold=true`;
-            $('user-name').innerText = name; $('user-role-label').innerText = role === ROLES.STAFF ? (data ? data.Position : 'Staff') : (role === ROLES.HEAD ? data.Position : role.toUpperCase());
-            $('user-avatar').src = avatar; $('header-user-avatar').src = avatar;
+            
+            // Desktop
+            $('user-name').innerText = name; 
+            $('user-role-label').innerText = role === ROLES.STAFF ? (data ? data.Position : 'Staff') : (role === ROLES.HEAD ? data.Position : role.toUpperCase());
+            $('user-avatar').src = avatar; 
+            
+            // Mobile
+            $('mobile-user-name').innerText = name;
+            $('mobile-user-role-label').innerText = role === ROLES.STAFF ? (data ? data.Position : 'Staff') : (role === ROLES.HEAD ? data.Position : role.toUpperCase());
+            $('mobile-user-avatar').src = avatar;
+            
+            $('header-user-avatar').src = avatar;
             setupNavigation(); switchTab('dashboard');
         }
 
