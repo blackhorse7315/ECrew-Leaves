@@ -41,7 +41,6 @@
             #app-wrapper, #mobile-nav-overlay, #global-loader, .no-print, .modal-overlay, header { 
                 display: none !important; 
             }
-            /* Menghapus bingkai kotak/frame saat cetak */
             #modal-detail { 
                 display: block !important; 
                 position: static !important; 
@@ -67,8 +66,9 @@
             .print-table td, .print-table th { border: 1px solid #000 !important; padding: 6px 10px !important; color: black !important; }
             .print-bg-header { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; }
             .print-label { font-weight: bold !important; text-transform: uppercase !important; font-size: 8pt !important; color: black !important; }
-            .signature-area { page-break-inside: avoid; margin-top: 30px !important; }
+            .signature-area { page-break-inside: avoid; margin-top: 20px !important; }
             .print-content { padding-top: 0px !important; }
+            .sign-img { max-height: 55px; max-width: 140px; object-fit: contain; margin: 0 auto; }
         }
     </style>
 </head>
@@ -272,7 +272,7 @@
             "Menikah": 3, "Menikahkan anak": 2, "Istri melahirkan / keguguran": 2, "Khitanan anak": 2, "Baptis anak (2 Hari)": 2, "Keluarga serumah meninggal": 2, "Anggota keluarga serumah lain meninggal": 1
         };
 
-        let users = []; let heads = []; let leaveRequests = []; let hrdProfile = { name: 'Admin TWA', division: 'HR', position: 'HR Manager', email: 'hr@transwisata.com', phone: '628123456789', LastResetYear: '0' };
+        let users = []; let heads = []; let leaveRequests = []; let hrdProfile = { name: 'Admin TWA', division: 'HR', position: 'HR Manager', email: 'hr@transwisata.com', phone: '628123456789', LastResetYear: '0', sign: '' };
         const ROLES = { STAFF: 'staff', HEAD: 'head', HRD: 'hrd' };
         let currentUser = null; 
         let editingUserId = null; 
@@ -482,7 +482,10 @@
                     { id: 'f-annual', label: 'Sisa Saldo Annual', key: 'AnnualQuota', type: 'number', value: data?.AnnualQuota || 0 }, 
                     { id: 'f-special', label: 'Sisa Saldo Special', key: 'SpecialQuota', type: 'number', value: data?.SpecialQuota || 0 }
                 ); 
+            } else if (type === 'head') {
+                fields.push({ id: 'f-sign', label: 'Signature Image URL', key: 'Sign', type: 'text', value: data?.Sign || '', full: true });
             }
+
             fields.push(
                 { id: 'f-user', label: 'Username', key: 'Username', type: 'text', value: data?.Username || '' }, 
                 { id: 'f-pass', label: 'Password', key: 'Password', type: 'text', value: data?.Password || '' }
@@ -673,11 +676,23 @@
         }
 
         function loadHRDProfile() {
-            $('main-content').innerHTML = `<div class="animate-fade-in max-w-xl mx-auto"><div class="glass-card p-10 rounded-[2.5rem] shadow-xl space-y-6"><h3 class="text-xl font-black uppercase text-blue-900 border-b pb-4">Profil HR Dept</h3><form id="hr-profile-form" class="space-y-4"><div><label class="text-[10px] font-black uppercase text-slate-400">Nama Manager HRD</label><input type="text" id="hr-p-name" value="${hrdProfile.name}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm font-bold mb-3"></div><div><label class="text-[10px] font-black uppercase text-slate-400">WhatsApp HRD</label><input type="text" id="hr-p-phone" value="${hrdProfile.phone}" placeholder="08..." class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm font-bold"></div><button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-xs shadow-lg mt-4">Simpan Profil</button></form></div></div>`;
+            $('main-content').innerHTML = `
+                <div class="animate-fade-in max-w-xl mx-auto">
+                    <div class="glass-card p-10 rounded-[2.5rem] shadow-xl space-y-6">
+                        <h3 class="text-xl font-black uppercase text-blue-900 border-b pb-4">Profil HR Dept</h3>
+                        <form id="hr-profile-form" class="space-y-4">
+                            <div><label class="text-[10px] font-black uppercase text-slate-400">Nama Manager HRD</label><input type="text" id="hr-p-name" value="${hrdProfile.name}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm font-bold mb-3"></div>
+                            <div><label class="text-[10px] font-black uppercase text-slate-400">WhatsApp HRD</label><input type="text" id="hr-p-phone" value="${hrdProfile.phone}" placeholder="08..." class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm font-bold"></div>
+                            <div><label class="text-[10px] font-black uppercase text-slate-400">Signature URL</label><input type="text" id="hr-p-sign" value="${hrdProfile.sign || ''}" placeholder="https://..." class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm font-bold"></div>
+                            <button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-xs shadow-lg mt-4">Simpan Profil</button>
+                        </form>
+                    </div>
+                </div>`;
             $('hr-profile-form').addEventListener('submit', async (e) => { 
                 e.preventDefault(); 
                 hrdProfile.name = $('hr-p-name').value;
                 hrdProfile.phone = $('hr-p-phone').value.replace(/[^0-9]/g, '');
+                hrdProfile.sign = $('hr-p-sign').value;
                 await callGAS('saveProfile', hrdProfile); showToast('Profil Disimpan!'); 
             });
         }
@@ -741,6 +756,8 @@
             const headObj = heads.find(h => h.ID.toString() === (r.TargetHeadId || "").toString());
             const headName = headObj ? headObj.Name : "________________";
             const headPosition = headObj ? headObj.Position : "Head of Department";
+            const headSign = headObj?.Sign || "";
+            const hrdSign = hrdProfile.sign || "";
             
             const printIdEl = $('print-id-label');
             if (printIdEl) printIdEl.innerText = 'Document ID: #' + r.ID;
@@ -802,14 +819,20 @@
                     <!-- SIGNATURE SECTION -->
                     <div class="signature-area grid grid-cols-2 gap-8 text-center">
                         <div class="flex flex-col items-center">
-                            <p class="text-[9pt] font-bold uppercase mb-16">Approved by,</p>
+                            <p class="text-[9pt] font-bold uppercase mb-1">Approved by,</p>
+                            <div class="h-[65px] flex items-center justify-center">
+                                ${headSign ? `<img src="${headSign}" class="sign-img" onerror="this.style.display='none'">` : '<div class="h-[65px]"></div>'}
+                            </div>
                             <div class="w-48 border-t border-black pt-1">
                                 <p class="font-black text-black uppercase text-[10pt] leading-tight">${headName}</p>
                                 <p class="text-[8pt] font-medium text-slate-600 uppercase mt-0">${headPosition}</p>
                             </div>
                         </div>
                         <div class="flex flex-col items-center">
-                            <p class="text-[9pt] font-bold uppercase mb-16">Acknowledged by,</p>
+                            <p class="text-[9pt] font-bold uppercase mb-1">Acknowledged by,</p>
+                            <div class="h-[65px] flex items-center justify-center">
+                                ${hrdSign ? `<img src="${hrdSign}" class="sign-img" onerror="this.style.display='none'">` : '<div class="h-[65px]"></div>'}
+                            </div>
                             <div class="w-48 border-t border-black pt-1">
                                 <p class="font-black text-black uppercase text-[10pt] leading-tight">${hrdProfile.name || 'HR MANAGER'}</p>
                                 <p class="text-[8pt] font-medium text-slate-600 uppercase mt-0">HR Manager</p>
