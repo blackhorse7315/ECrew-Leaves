@@ -297,7 +297,6 @@
          */
         function convertToDirectLink(url) {
             if (!url) return '';
-            // Mencari pola ID file Google Drive
             const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
             if (match && match[1]) {
                 return `https://lh3.googleusercontent.com/d/${match[1]}`;
@@ -417,6 +416,73 @@
             currentUser = null;
         }
 
+        /**
+         * Fungsi Administrative
+         */
+        async function handleBulkParse() {
+            const inputEl = $('e-bulk-input');
+            if (!inputEl) return;
+            const text = inputEl.value.trim();
+            if (!text) return;
+            const lines = text.split('\n');
+            let count = 0;
+            showToast('Memproses data massal...');
+            for (let line of lines) {
+                const parts = line.split('|').map(p => p.trim());
+                if (parts.length >= 7) {
+                    const payload = {
+                        ID: 'USR-' + Math.floor(1000 + Math.random()*9000),
+                        Name: parts[0], Division: parts[1], Position: parts[2], Email: parts[3], Phone: parts[4],
+                        AnnualQuota: parseInt(parts[5]) || 12, SpecialQuota: parseInt(parts[6]) || 40,
+                        Username: parts[7] || parts[3], Password: parts[8] || 'TWA-Pass'
+                    };
+                    await callGAS('saveUser', payload);
+                    count++;
+                }
+            }
+            showToast(`${count} Karyawan Berhasil Diinput!`);
+            inputEl.value = '';
+            setTimeout(async () => { await fetchFromSheet(); loadEmployeeManagerUI(); }, 1000);
+        }
+
+        async function deleteUser(id) {
+            if(!confirm('Apakah Anda yakin ingin menghapus karyawan ini?')) return;
+            showToast('Menghapus...');
+            await callGAS('deleteUser', { id: id });
+            setTimeout(async () => { await fetchFromSheet(); loadEmployeeManagerUI(); showToast('Dihapus!'); }, 1000);
+        }
+
+        async function deleteHead(id) {
+            if(!confirm('Apakah Anda yakin ingin menghapus Head Dept ini?')) return;
+            showToast('Menghapus...');
+            await callGAS('deleteHead', { id: id });
+            setTimeout(async () => { await fetchFromSheet(); loadHeadManagerUI(); showToast('Dihapus!'); }, 1000);
+        }
+
+        async function deleteRequest(id) {
+            if(!confirm("Hapus riwayat permanen?")) return;
+            const r = leaveRequests.find(req => getValueCaseInsensitive(req, 'id').toString() === id.toString());
+            if (r && getValueCaseInsensitive(r, 'status') === 'APPROVED') {
+                const u = users.find(usr => getValueCaseInsensitive(usr, 'name') === getValueCaseInsensitive(r, 'name'));
+                if (u) {
+                    const dur = parseInt(getValueCaseInsensitive(r, 'duration')) || 0;
+                    if (getValueCaseInsensitive(r, 'type') === 'Annual Leave') {
+                        u.AnnualQuota = (parseInt(getValueCaseInsensitive(u, 'AnnualQuota')) || 0) + dur;
+                    } else {
+                        u.SpecialQuota = (parseInt(getValueCaseInsensitive(u, 'SpecialQuota')) || 0) + dur;
+                    }
+                    u.id = getValueCaseInsensitive(u, 'id'); 
+                    await callGAS('saveUser', u);
+                }
+            }
+            await callGAS('deleteRequest', { id: id });
+            await fetchFromSheet(); loadHistory();
+        }
+
+        function handleDateChange() { 
+            onLeaveTypeChange(); 
+        }
+
         function loadEmployeeManagerUI() {
             $('main-content').innerHTML = `
                 <div class="animate-fade-in space-y-8">
@@ -491,7 +557,6 @@
                 }
                 if(f.help) html += `<p class="text-[9px] text-slate-400 mt-1 ml-1">${f.help}</p>`;
                 
-                // Tambahkan preview khusus tanda tangan Head
                 if(f.key === 'Sign') {
                     html += `
                     <div class="mt-3 p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center">
@@ -503,7 +568,6 @@
                 container.innerHTML += html + `</div>`;
             });
 
-            // Logika konversi dan preview Head Sign
             if (type === 'head') {
                 const signInput = $('f-sign');
                 const signPreview = $('head-sign-preview');
@@ -680,7 +744,6 @@
                     }
                 }
 
-                // Logika Notifikasi WhatsApp
                 setTimeout(() => {
                     let waMessage = "";
                     if (isHeadDecision) {
@@ -796,7 +859,7 @@
         }
 
         $('leave-request-form').addEventListener('submit', async (e) => {
-            e.preventDefault(); const headId = $('r-target-head').value; const hInfo = heads.find(h => getValueCaseInsensitive(h, 'id').toString() === headId.toString());
+            e.preventDefault(); const headId = $('r-target-head').value; 
             const p = { ID: 'TWA-' + Date.now(), Name: currentUser.name, Division: getValueCaseInsensitive(currentUser.data, 'division'), Position: getValueCaseInsensitive(currentUser.data, 'position'), TargetHeadId: headId, Type: $('r-type').value, Start: $('r-start').value, End: $('r-end').value, Duration: parseInt($('r-duration-view').innerText), Reason: $('r-reason').value, Handover: $('r-handover').value, Phone: getValueCaseInsensitive(currentUser.data, 'phone'), Status: 'HEAD_DEPT_REVIEW', SubmitDate: toISODateString(new Date()) };
             showToast('Mengirim...'); await callGAS('saveRequest', p); closeRequestModal(); await fetchFromSheet(); switchTab('dashboard');
         });
@@ -869,9 +932,6 @@
         }
         function closeUserCard() { $('modal-user-card').classList.add('hidden'); $('modal-user-card').classList.remove('flex'); }
 
-        /**
-         * Fungsi Pemicu WhatsApp
-         */
         function triggerWhatsApp(p, m) { 
             if (!p) return; 
             let c = String(p).replace(/[^0-9]/g, ''); 
