@@ -262,7 +262,7 @@
     <div id="toast" class="fixed bottom-8 right-8 z-[250] hidden animate-fade-in"><div class="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/10"><div id="toast-icon" class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm"><i class="fas fa-check"></i></div><p id="toast-msg" class="text-sm font-bold">Berhasil</p></div></div>
 
     <script>
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwCBvuRvUeZhRIEDmHgqiH5dW-_4F5XC_umkr7OQS7KRM79skZk2A8RfdZtXGA3zvJ5Uw/exec";
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzJrko3tHtlgs8n8uq2xZ5AkP724alROxlQ2V08Ig9XedHbbVQoNswtITBB7Nh9ub6ABA/exec";
 
         const DIVISIONS = ["Operation", "Maintenance", "Safety", "Staf"];
         const POSITIONS = ["Director", "Safety, Quality & Security Manager", "General Manager", "Operation Manager", "Maintenance Manager", "Chief Pilot Fixed Wing", "Chief Pilot Rotary Wing", "Chief Flight Support", "Chief Engineer", "Chief Inspector", "Chief Finance, Accounting & Tax", "Human Resource Development", "Line Pilot", "Engineer", "Cabin Service", "Staf", "Flight Support", "Ground Support", "Finance", "Logistic", "Aviation Security", "Kurir", "Driver"];
@@ -298,11 +298,15 @@
             try {
                 const res = await fetch(GAS_API_URL, { 
                     method: 'POST', 
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ action: 'fetchAll' }),
+                    cache: 'no-cache',
                     redirect: 'follow',
-                    mode: 'cors'
+                    credentials: 'omit'
                 });
-                if (!res.ok) throw new Error('Network response was not ok');
+                
+                if (!res.ok) throw new Error('Koneksi ke database gagal (Status: ' + res.status + ')');
+                
                 const result = await res.json();
                 if (result.status === 'success') {
                     users = result.data.users || []; 
@@ -319,7 +323,10 @@
                 }
             } catch (err) { 
                 console.error('Fetch error:', err);
-                if ($('sync-status-text')) $('sync-status-text').innerText = "Gagal Sinkron";
+                if ($('sync-status-text')) {
+                    $('sync-status-text').innerText = "Gagal Sinkron: Pastikan Apps Script 'Anyone' ";
+                    $('sync-status-text').classList.add('text-red-500');
+                }
             } 
             return false;
         }
@@ -347,17 +354,19 @@
             $('sync-btn').classList.add('opacity-50'); 
             $('global-loader').classList.remove('loader-hidden');
             $('sync-status-text').innerText = "Sinkronisasi...";
+            $('sync-status-text').classList.remove('text-red-500');
+            
             const success = await fetchFromSheet();
             setTimeout(() => { 
                 $('sync-icon').classList.remove('spin-sync'); 
                 $('sync-btn').classList.remove('opacity-50'); 
-                $('global-loader').classList.add('loader-hidden'); 
-                isSyncing = false; 
-                if(success) { 
+                if (success) {
+                    $('global-loader').classList.add('loader-hidden'); 
                     showToast('Database Sinkron!'); 
                     const currentTab = document.querySelector('.nav-item.text-white')?.id.replace('nav-', ''); 
                     if(currentTab) switchTab(currentTab); 
                 }
+                isSyncing = false; 
             }, 600);
         }
 
@@ -367,7 +376,9 @@
                     method: 'POST', 
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
                     body: JSON.stringify({ action, data }),
-                    redirect: 'follow'
+                    cache: 'no-cache',
+                    redirect: 'follow',
+                    credentials: 'omit'
                 }); 
                 const result = await res.json();
                 return result; 
@@ -878,8 +889,11 @@
         
         window.onload = async () => { 
             $('current-date').innerText = formatDate(new Date()); 
-            await fetchFromSheet(); 
-            $('global-loader').classList.add('loader-hidden'); 
+            // Tambahkan delay kecil agar lingkungan sandbox benar-benar siap
+            setTimeout(async () => {
+                await fetchFromSheet(); 
+                $('global-loader').classList.add('loader-hidden'); 
+            }, 500);
         };
     </script>
 </body>
