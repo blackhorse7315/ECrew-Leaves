@@ -637,24 +637,82 @@
         }
 
         function handleApprovalAction(id, approve) { pendingApprovalId = id; isApproveAction = approve; $('note-title').innerText = approve ? 'Setujui' : 'Tolak'; $('modal-note').classList.remove('hidden'); $('modal-note').classList.add('flex'); }
+        
         async function confirmApprovalWithNote() {
-            const note = $('note-text').value.trim(); const r = leaveRequests.find(req => getValueCaseInsensitive(req, 'id').toString() === pendingApprovalId.toString()); if (!r) return;
+            const note = $('note-text').value.trim(); 
+            const r = leaveRequests.find(req => getValueCaseInsensitive(req, 'id').toString() === pendingApprovalId.toString()); 
+            if (!r) return;
+            
             const isHeadDecision = currentUser.role === ROLES.HEAD;
+            const headPos = getValueCaseInsensitive(currentUser.data, 'Position') || 'Department Head';
+            const userName = getValueCaseInsensitive(r, 'Name');
+            const userPos = getValueCaseInsensitive(r, 'Position');
+            const submitDate = getValueCaseInsensitive(r, 'SubmitDate') || new Date();
+            const leaveType = getValueCaseInsensitive(r, 'Type');
+            const leaveStart = getValueCaseInsensitive(r, 'Start');
+            const leaveEnd = getValueCaseInsensitive(r, 'End');
+            const leaveDur = getValueCaseInsensitive(r, 'Duration');
+            const leaveReason = getValueCaseInsensitive(r, 'Reason');
+            const userPhone = getValueCaseInsensitive(r, 'Phone');
+
             r.Status = isApproveAction ? (isHeadDecision ? 'HRD_APPROVAL' : 'APPROVED') : 'REJECTED';
             if (isHeadDecision) r.HeadNote = note; else r.HRDNote = note;
-            r.Start = toISODateString(getValueCaseInsensitive(r, 'start')); r.End = toISODateString(getValueCaseInsensitive(r, 'end')); r.SubmitDate = toISODateString(getValueCaseInsensitive(r, 'SubmitDate') || new Date());
-            r.ID = getValueCaseInsensitive(r, 'id'); closeNoteModal(); showToast('Memproses...'); 
+            
+            r.Start = toISODateString(leaveStart); 
+            r.End = toISODateString(leaveEnd); 
+            r.SubmitDate = toISODateString(submitDate);
+            r.ID = getValueCaseInsensitive(r, 'id'); 
+            
+            closeNoteModal(); 
+            showToast('Memproses...'); 
             const saveRes = await callGAS('saveRequest', r);
-            if (saveRes.status === 'success' && r.Status === 'APPROVED') {
-                const u = users.find(usr => getValueCaseInsensitive(usr, 'name') === getValueCaseInsensitive(r, 'name'));
-                if (u) {
-                    const dur = parseInt(getValueCaseInsensitive(r, 'duration')) || 0;
-                    if (getValueCaseInsensitive(r, 'type') === 'Annual Leave') u.AnnualQuota = Math.max(0, (parseInt(getValueCaseInsensitive(u, 'AnnualQuota')) || 0) - dur);
-                    else u.SpecialQuota = Math.max(0, (parseInt(getValueCaseInsensitive(u, 'SpecialQuota')) || 0) - dur);
-                    u.id = getValueCaseInsensitive(u, 'id'); await callGAS('saveUser', u);
+
+            if (saveRes.status === 'success') {
+                if (r.Status === 'APPROVED') {
+                    const u = users.find(usr => getValueCaseInsensitive(usr, 'name') === userName);
+                    if (u) {
+                        const dur = parseInt(leaveDur) || 0;
+                        if (leaveType === 'Annual Leave') u.AnnualQuota = Math.max(0, (parseInt(getValueCaseInsensitive(u, 'AnnualQuota')) || 0) - dur);
+                        else u.SpecialQuota = Math.max(0, (parseInt(getValueCaseInsensitive(u, 'SpecialQuota')) || 0) - dur);
+                        u.id = getValueCaseInsensitive(u, 'id'); 
+                        await callGAS('saveUser', u);
+                    }
                 }
+
+                // Logika Notifikasi WhatsApp
+                setTimeout(() => {
+                    let waMessage = "";
+                    if (isHeadDecision) {
+                        // 1. WhatsApp dari Head ke User
+                        const decisionText = isApproveAction ? "*DISETUJUI*" : "*TIDAK DISETUJUI*";
+                        waMessage = `*UPDATE STATUS CUTI*\n\nYth. ${userName},\n\nPengajuan cuti Anda tanggal ${formatDate(submitDate)} telah ${decisionText} oleh ${headPos}.\n\n*Detail Pengajuan:*\n- Tipe: ${leaveType}\n- Periode: ${formatDate(leaveStart)} s/d ${formatDate(leaveEnd)}\n- Durasi: ${leaveDur} Hari\n- Alasan: ${leaveReason}\n\n`;
+                        
+                        if (isApproveAction) {
+                            waMessage += `Silakan cek detail di aplikasi.`;
+                        } else {
+                            waMessage += `Silakan cek detail di aplikasi atau langsung menghubungi ${headPos}.`;
+                        }
+                        waMessage += `\n\nTerima kasih.`;
+                        
+                        if (userPhone) triggerWhatsApp(userPhone, waMessage);
+
+                        // 2. WhatsApp dari Head ke HRD (Hanya jika SETUJU)
+                        if (isApproveAction && hrdProfile.phone) {
+                            const hrdMsg = `*NOTIFIKASI PENGAJUAN CUTI*\n\nYth. HRD Transwisata,\n\nBerikut ini pengajuan cuti dari anggota kami atas nama *${userName}* (${userPos}) telah saya *SETUJUI*\n\n*Detail Pengajuan:*\n- Tipe: ${leaveType}\n- Periode: ${formatDate(leaveStart)} s/d ${formatDate(leaveEnd)}\n- Durasi: ${leaveDur} Hari\n- Alasan: ${leaveReason}\n\nMohon diproses lebih lanjut.\n\nSilakan login melalui portal *ECrew Transwisata* untuk akses *ECrew Leaves System* dan memproses pengajuan ini.\n\nTerima kasih.`;
+                            // Karena triggerWhatsApp mengganti window.location, kita beri delay kecil untuk pesan kedua atau arahkan user manual
+                            setTimeout(() => triggerWhatsApp(hrdProfile.phone, hrdMsg), 2000);
+                        }
+
+                    } else if (currentUser.role === ROLES.HRD) {
+                        // 3. WhatsApp dari HRD ke User
+                        const decisionText = isApproveAction ? "*DISETUJUI*" : "*TIDAK DISETUJUI*";
+                        waMessage = `*UPDATE STATUS CUTI*\n\nYth. ${userName},\n\nPengajuan cuti Anda tanggal ${formatDate(submitDate)} telah ${decisionText} oleh HRD.\n\nSilakan cek detail di aplikasi.\n\nTerima kasih.`;
+                        if (userPhone) triggerWhatsApp(userPhone, waMessage);
+                    }
+                }, 500);
+
+                setTimeout(async () => { await fetchFromSheet(); switchTab('approval'); showToast('Berhasil!'); }, 800);
             }
-            if (saveRes.status === 'success') { setTimeout(async () => { await fetchFromSheet(); switchTab('approval'); showToast('Berhasil!'); }, 800); }
         }
 
         function loadHRDProfile() {
@@ -813,6 +871,17 @@
             $('modal-user-card').classList.remove('hidden'); $('modal-user-card').classList.add('flex');
         }
         function closeUserCard() { $('modal-user-card').classList.add('hidden'); $('modal-user-card').classList.remove('flex'); }
+
+        /**
+         * Fungsi Pemicu WhatsApp
+         */
+        function triggerWhatsApp(p, m) { 
+            if (!p) return; 
+            let c = String(p).replace(/[^0-9]/g, ''); 
+            if (c.startsWith('0')) c = '62' + c.substring(1); 
+            else if (c.startsWith('8')) c = '62' + c; 
+            window.location.href = `whatsapp://send?phone=${c}&text=${encodeURIComponent(m)}`; 
+        }
         
         window.onload = async () => { $('current-date').innerText = formatDate(new Date()); setTimeout(async () => { await fetchFromSheet(); $('global-loader').classList.add('loader-hidden'); }, 500); };
     </script>
