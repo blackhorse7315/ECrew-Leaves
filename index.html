@@ -31,14 +31,14 @@
         #global-loader { transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, visibility 0.4s; visibility: visible; }
         .loader-hidden { transform: translateY(150px) !important; opacity: 0 !important; visibility: hidden !important; }
         
-        /* PRINT STYLES - A4 SPECIFIC */
+        /* PRINT STYLES - PROFESSIONAL DOC A4 */
         @media print {
             @page {
                 size: A4;
-                margin: 15mm;
+                margin: 10mm;
             }
-            body { background: white !important; -webkit-print-color-adjust: exact; }
-            #app-wrapper, #mobile-nav-overlay, #global-loader, .no-print, .modal-overlay { 
+            body { background: white !important; font-size: 10pt !important; color: black !important; }
+            #app-wrapper, #mobile-nav-overlay, #global-loader, .no-print, .modal-overlay, header { 
                 display: none !important; 
             }
             #modal-detail { 
@@ -57,10 +57,14 @@
                 padding: 0 !important;
                 margin: 0 !important;
                 border: none !important;
+                background: white !important;
             }
-            .print-border-b { border-bottom: 2px solid #1e3a8a !important; }
-            .print-text-blue { color: #1e3a8a !important; }
-            .print-bg-gray { background-color: #f8fafc !important; }
+            .print-table { border: 1.5px solid #000 !important; border-collapse: collapse !important; width: 100% !important; margin-bottom: 15px !important; }
+            .print-table td, .print-table th { border: 1px solid #000 !important; padding: 5px 8px !important; }
+            .print-bg-header { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; }
+            .print-label { font-weight: bold !important; text-transform: uppercase !important; font-size: 7.5pt !important; color: #000 !important; }
+            .signature-area { page-break-inside: avoid; }
+            .print-content { padding-top: 5px !important; }
         }
     </style>
 </head>
@@ -182,24 +186,24 @@
     <!-- DETAIL MODAL / PRINT AREA -->
     <div id="modal-detail" class="fixed inset-0 z-[150] modal-overlay hidden items-center justify-center p-4">
         <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
-            <div id="print-area" class="p-8 md:p-12 overflow-y-auto no-scrollbar flex-1">
+            <div id="print-area" class="p-8 md:p-12 overflow-y-auto no-scrollbar flex-1 bg-white">
                 <!-- PRINT HEADER -->
-                <div class="text-center mb-10 pb-6 print-border-b">
-                    <div class="h-20 flex justify-center mb-4">
+                <div class="text-center mb-6 pb-4 border-b-4 border-double border-slate-800 signature-area">
+                    <div class="h-16 flex justify-center mb-3">
                         <img src="https://lh3.googleusercontent.com/d/1WNcGjsZ9_Fp54xzOl01EYRqM6-wY5Zh7" alt="Logo" class="h-full object-contain" />
                     </div>
-                    <h2 class="text-2xl font-black text-blue-900 tracking-tighter uppercase mb-1">Employee Leaves Form</h2>
-                    <p class="text-sm font-bold text-slate-500 uppercase tracking-widest">Transwisata Prima Aviation</p>
-                    <div id="print-id-label" class="mt-4 inline-block px-4 py-1 bg-slate-100 rounded-full text-[10px] font-black tracking-widest text-slate-500">#TWA-ID</div>
+                    <h2 class="text-xl font-black text-slate-900 uppercase mb-0 tracking-tight">Employee Leaves Form</h2>
+                    <p class="text-xs font-bold text-slate-700 uppercase tracking-[0.2em]">Transwisata Prima Aviation</p>
+                    <div id="print-id-label" class="mt-2 text-[10pt] font-bold text-slate-500"></div>
                 </div>
                 
-                <div id="modal-body"></div>
+                <div id="modal-body" class="print-content"></div>
             </div>
             
             <div class="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 no-print shrink-0">
                 <button onclick="closeDetail()" class="flex-1 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-600 hover:bg-slate-100 transition-all text-xs">Tutup</button>
                 <button onclick="window.print()" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 shadow-lg transition-all flex items-center justify-center gap-2 text-xs">
-                    <i class="fas fa-print"></i> Cetak Dokumen PDF
+                    <i class="fas fa-print"></i> Simpan ke PDF / Cetak
                 </button>
             </div>
         </div>
@@ -734,82 +738,84 @@
             const headName = headObj ? headObj.Name : "________________";
             const headPosition = headObj ? headObj.Position : "Head of Department";
             
-            $('print-id-label').innerText = '#' + r.ID;
-            let stCol = r.Status === 'APPROVED' ? 'print-text-blue' : 'text-amber-600';
+            // Perbaikan error di sini: Pastikan print-id-label ada di HTML
+            const printIdEl = $('print-id-label');
+            if (printIdEl) printIdEl.innerText = 'Document ID: #' + r.ID;
+
+            let stCol = r.Status === 'APPROVED' ? 'text-green-700 font-bold' : 'text-amber-700 font-bold';
             
             $('modal-body').innerHTML = `
-                <div class="space-y-8 text-sm">
-                    <!-- SECTION 1: EMPLOYEE INFO -->
-                    <div class="grid grid-cols-2 border border-slate-200 rounded-xl overflow-hidden">
-                        <div class="p-4 border-r border-b border-slate-200 print-bg-gray">
-                            <p class="text-[9px] font-black uppercase text-slate-400 mb-1">Employee Name</p>
-                            <p class="font-bold text-slate-800">${r.Name}</p>
-                        </div>
-                        <div class="p-4 border-b border-slate-200">
-                            <p class="text-[9px] font-black uppercase text-slate-400 mb-1">Division / Position</p>
-                            <p class="font-bold text-slate-800">${r.Division || '-'} / ${r.Position || '-'}</p>
-                        </div>
-                        <div class="p-4 border-r border-slate-200 print-bg-gray">
-                            <p class="text-[9px] font-black uppercase text-slate-400 mb-1">Type of Leave</p>
-                            <p class="font-bold text-slate-800">${r.Type}</p>
-                        </div>
-                        <div class="p-4">
-                            <p class="text-[9px] font-black uppercase text-slate-400 mb-1">Duration</p>
-                            <p class="font-bold text-slate-800">${r.Duration || 0} Working Days</p>
-                        </div>
-                    </div>
+                <div class="print-doc-container">
+                    <!-- DATA TABLE -->
+                    <table class="print-table mb-4">
+                        <tr>
+                            <td class="print-bg-header" style="width: 25%"><span class="print-label">Full Name</span></td>
+                            <td style="width: 25%">${r.Name}</td>
+                            <td class="print-bg-header" style="width: 25%"><span class="print-label">Reference ID</span></td>
+                            <td style="width: 25%">#${r.ID}</td>
+                        </tr>
+                        <tr>
+                            <td class="print-bg-header"><span class="print-label">Division</span></td>
+                            <td>${r.Division || '-'}</td>
+                            <td class="print-bg-header"><span class="print-label">Position</span></td>
+                            <td>${r.Position || '-'}</td>
+                        </tr>
+                        <tr>
+                            <td class="print-bg-header"><span class="print-label">Type of Leave</span></td>
+                            <td>${r.Type}</td>
+                            <td class="print-bg-header"><span class="print-label">Task Delegated to</span></td>
+                            <td>${r.Handover || '-'}</td>
+                        </tr>
+                        <tr>
+                            <td class="print-bg-header"><span class="print-label">Period (Date)</span></td>
+                            <td colspan="3">${formatDate(r.Start)} - ${formatDate(r.End)}</td>
+                        </tr>
+                        <tr>
+                            <td class="print-bg-header"><span class="print-label">Total Duration</span></td>
+                            <td colspan="3">${r.Duration || 0} Working Days</td>
+                        </tr>
+                        <tr>
+                            <td class="print-bg-header"><span class="print-label">Reason</span></td>
+                            <td colspan="3" style="min-height: 40px; vertical-align: top;">${r.Reason || '-'}</td>
+                        </tr>
+                        <tr>
+                            <td class="print-bg-header"><span class="print-label">Current Status</span></td>
+                            <td colspan="3"><span class="${stCol} uppercase">${r.Status}</span></td>
+                        </tr>
+                    </table>
 
-                    <!-- SECTION 2: DATE & HANDOVER -->
-                    <div class="grid grid-cols-2 border border-slate-200 rounded-xl overflow-hidden">
-                        <div class="p-4 border-r border-slate-200">
-                            <p class="text-[9px] font-black uppercase text-slate-400 mb-1">Period (Start - End)</p>
-                            <p class="font-bold text-slate-800">${formatDate(r.Start)} - ${formatDate(r.End)}</p>
-                        </div>
-                        <div class="p-4 print-bg-gray">
-                            <p class="text-[9px] font-black uppercase text-slate-400 mb-1">Task Handover (Delegasi)</p>
-                            <p class="font-bold text-blue-800">${r.Handover || '-'}</p>
-                        </div>
-                    </div>
-
-                    <!-- SECTION 3: REASON -->
-                    <div class="p-5 border border-slate-200 rounded-xl bg-slate-50/50">
-                        <p class="text-[9px] font-black uppercase text-slate-400 mb-2">Reason for Leave</p>
-                        <p class="italic text-slate-700 leading-relaxed font-medium">"${r.Reason || '-'}"</p>
-                    </div>
-
-                    <!-- SECTION 4: APPROVAL NOTES -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="p-4 border border-blue-100 rounded-xl bg-blue-50/30">
-                            <p class="text-[8px] font-black text-blue-400 uppercase mb-2">Head Dept Notes</p>
-                            <p class="text-xs italic text-slate-600">${r.HeadNote || '-'}</p>
-                        </div>
-                        <div class="p-4 border border-purple-100 rounded-xl bg-purple-50/30">
-                            <p class="text-[8px] font-black text-purple-400 uppercase mb-2">HRD Notes</p>
-                            <p class="text-xs italic text-slate-600">${r.HRDNote || '-'}</p>
-                        </div>
-                    </div>
-
-                    <div class="pt-4 flex justify-between items-center border-t border-dashed border-slate-200">
-                         <p class="text-[10px] font-bold text-slate-400">Current Status: <span class="font-black uppercase ${stCol}">${r.Status}</span></p>
-                         <p class="text-[10px] font-bold text-slate-400">Submitted: ${formatDate(r.SubmitDate)}</p>
-                    </div>
+                    <!-- APPROVAL NOTES TABLE -->
+                    <table class="print-table mb-8">
+                        <tr class="print-bg-header text-center">
+                            <th style="width: 50%"><span class="print-label">Head Department Decision / Notes</span></th>
+                            <th style="width: 50%"><span class="print-label">HR Manager Decision / Notes</span></th>
+                        </tr>
+                        <tr>
+                            <td style="height: 50px; vertical-align: top; font-style: italic; font-size: 9pt;">${r.HeadNote || '-'}</td>
+                            <td style="height: 50px; vertical-align: top; font-style: italic; font-size: 9pt;">${r.HRDNote || '-'}</td>
+                        </tr>
+                    </table>
 
                     <!-- SIGNATURE SECTION -->
-                    <div class="pt-16 grid grid-cols-2 gap-12 text-center mt-20">
-                        <div>
-                            <p class="text-[10px] font-black uppercase text-slate-500 mb-20">Approved by,</p>
-                            <div class="w-48 mx-auto border-t-2 border-slate-900 pt-2">
-                                <p class="font-black text-slate-900 uppercase text-xs">${headName}</p>
-                                <p class="text-[9px] font-bold text-slate-500 uppercase mt-1">${headPosition}</p>
+                    <div class="signature-area mt-4 grid grid-cols-2 gap-8 text-center">
+                        <div class="flex flex-col items-center">
+                            <p class="text-[9pt] font-bold uppercase mb-16">Approved by,</p>
+                            <div class="w-48 border-t border-black pt-1">
+                                <p class="font-black text-black uppercase text-[10pt] leading-tight">${headName}</p>
+                                <p class="text-[8pt] font-medium text-slate-600 uppercase mt-0">${headPosition}</p>
                             </div>
                         </div>
-                        <div>
-                            <p class="text-[10px] font-black uppercase text-slate-500 mb-20">Acknowledged by,</p>
-                            <div class="w-48 mx-auto border-t-2 border-slate-900 pt-2">
-                                <p class="font-black text-slate-900 uppercase text-xs">${hrdProfile.name || 'HR MANAGER'}</p>
-                                <p class="text-[9px] font-bold text-slate-500 uppercase mt-1">HR Manager</p>
+                        <div class="flex flex-col items-center">
+                            <p class="text-[9pt] font-bold uppercase mb-16">Acknowledged by,</p>
+                            <div class="w-48 border-t border-black pt-1">
+                                <p class="font-black text-black uppercase text-[10pt] leading-tight">${hrdProfile.name || 'HR MANAGER'}</p>
+                                <p class="text-[8pt] font-medium text-slate-600 uppercase mt-0">HR Manager</p>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="mt-8 text-[7pt] text-slate-400 italic text-right">
+                        Printed automatically via ECrew Transwisata System on ${new Date().toLocaleString('id-ID')}
                     </div>
                 </div>`;
             $('modal-detail').classList.remove('hidden'); 
