@@ -702,17 +702,44 @@
         }
 
         $('leave-request-form').addEventListener('submit', async (e) => {
-            e.preventDefault(); const hInfo = heads.find(h => h.ID == $('r-target-head').value);
+            e.preventDefault(); 
+            const hInfo = heads.find(h => h.ID == $('r-target-head').value);
             const payload = {
-                ID: 'TWA-' + Date.now(), Name: currentUser.name, Division: currentUser.data.Division, Position: currentUser.data.Position,
-                TargetHeadId: $('r-target-head').value, Type: $('r-type').value, Start: $('r-start').value, End: $('r-end').value,
-                Duration: parseInt($('r-duration-view').innerText), Reason: $('r-reason').value, Handover: $('r-handover').value,
-                Phone: currentUser.data.Phone, Status: 'HEAD_DEPT_REVIEW', SubmitDate: toISODateString(new Date())
+                ID: 'TWA-' + Date.now(), 
+                Name: currentUser.name, 
+                Division: currentUser.data.Division, 
+                Position: currentUser.data.Position,
+                TargetHeadId: $('r-target-head').value, 
+                Type: $('r-type').value, 
+                Start: $('r-start').value, 
+                End: $('r-end').value,
+                Duration: parseInt($('r-duration-view').innerText), 
+                Reason: $('r-reason').value, 
+                Handover: $('r-handover').value,
+                Phone: currentUser.data.Phone, 
+                Status: 'HEAD_DEPT_REVIEW', 
+                SubmitDate: toISODateString(new Date())
             };
+            
             showToast('Mengirim...');
             await callGAS('saveRequest', payload);
-            triggerWhatsApp(hInfo.Phone, `*PENGAJUAN CUTI BARU*\nAda pengajuan dari *${payload.Name}*.\n- Tipe: ${payload.Type}\n- Alasan: ${payload.Reason}\n\nCek sistem.`);
-            closeRequestModal(); await fetchFromSheet(); switchTab('dashboard');
+            
+            // Format Notifikasi WhatsApp sesuai request terbaru
+            const headMsg = `*NOTIFIKASI PENGJUAN CUTI*\n\n` +
+                          `Yth. ${hInfo.Position},\n\n` +
+                          `Ada pengajuan cuti baru dari *${payload.Name}* (${payload.Position}).\n\n` +
+                          `*Detail Pengajuan:*\n` +
+                          `- Tipe: ${payload.Type}\n` +
+                          `- Periode: ${formatDate(payload.Start)} s/d ${formatDate(payload.End)}\n` +
+                          `- Durasi: ${payload.Duration} Hari\n` +
+                          `- Alasan: ${payload.Reason}\n\n` +
+                          `Silakan login melalui portal *ECrew Transwisata* untuk akses *ECrew Leaves System* dan memproses pengajuan ini.\n\n` +
+                          `Terima kasih.`;
+            
+            triggerWhatsApp(hInfo.Phone, headMsg);
+            closeRequestModal(); 
+            await fetchFromSheet(); 
+            switchTab('dashboard');
         });
 
         function showDetail(id) {
