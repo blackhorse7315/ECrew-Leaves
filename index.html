@@ -584,7 +584,17 @@
             const isHRDDecision = currentUser.role === ROLES.HRD;
             
             r.Status = isApproveAction ? (isHeadDecision ? 'HRD_APPROVAL' : 'APPROVED') : 'REJECTED';
-            if (isHeadDecision) r.HeadNote = note; else r.HRDNote = note;
+            
+            // Perbaikan Pemetaan Header (Gunakan bracket notation untuk mendukung spasi kolom Google Sheet)
+            if (isHeadDecision) {
+                r['Status Head'] = isApproveAction ? 'SETUJU' : 'TOLAK';
+                r['Head Note'] = note;
+                r.HeadNote = note; // Backup tanpa spasi
+            } else {
+                r['Status HRD'] = isApproveAction ? 'SETUJU' : 'TOLAK';
+                r['HRD Note'] = note;
+                r.HRDNote = note; // Backup tanpa spasi
+            }
             
             r.Start = toISODateString(r.Start); r.End = toISODateString(r.End); r.SubmitDate = toISODateString(r.SubmitDate || new Date());
             
@@ -726,6 +736,13 @@
                     <div class="col-span-2 pt-6 border-t border-slate-100">
                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Alasan Pengajuan</p>
                         <p class="p-4 bg-slate-50 rounded-2xl italic text-slate-600 border border-slate-100">"${r.Reason || '-'}"</p>
+                    </div>
+                    <div class="col-span-2 pt-4">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Catatan Approval</p>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="p-3 bg-blue-50 rounded-xl border border-blue-100"><p class="text-[8px] font-bold text-blue-400 uppercase">Head Note</p><p class="text-xs italic text-slate-600">${r['Head Note'] || r.HeadNote || '-'}</p></div>
+                            <div class="p-3 bg-purple-50 rounded-xl border border-purple-100"><p class="text-[8px] font-bold text-purple-400 uppercase">HRD Note</p><p class="text-xs italic text-slate-600">${r['HRD Note'] || r.HRDNote || '-'}</p></div>
+                        </div>
                     </div>
                     <div class="col-span-2 grid grid-cols-3 gap-4 pt-12 text-center mt-12">
                         <div><p class="text-[9px] font-black uppercase text-slate-400 mb-16">Diajukan Oleh,</p><p class="font-bold border-t border-slate-300 pt-2">${r.Name}</p></div>
