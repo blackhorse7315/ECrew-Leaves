@@ -30,11 +30,30 @@
         .spin-sync { animation: spin 1s linear infinite; }
         #global-loader { transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, visibility 0.4s; visibility: visible; }
         .loader-hidden { transform: translateY(150px) !important; opacity: 0 !important; visibility: hidden !important; }
+        
+        /* PRINT STYLES - FIXED FOR PDF */
         @media print {
-            body * { visibility: hidden; }
-            #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 40px; background: white; }
-            .no-print { display: none !important; }
+            body { background: white !important; }
+            #app-wrapper, #mobile-nav-overlay, #global-loader, .no-print, .modal-overlay { 
+                display: none !important; 
+            }
+            #modal-detail { 
+                display: block !important; 
+                position: static !important; 
+                width: 100% !important; 
+                max-width: none !important;
+                height: auto !important;
+                box-shadow: none !important;
+                overflow: visible !important;
+                padding: 0 !important;
+            }
+            #print-area { 
+                display: block !important; 
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .glass-card { background: white !important; border: 1px solid #eee !important; }
+            .aviation-gradient { background: #1e3a8a !important; color: white !important; -webkit-print-color-adjust: exact; }
         }
     </style>
 </head>
@@ -153,16 +172,31 @@
         </div>
     </div>
 
+    <!-- DETAIL MODAL / PRINT AREA -->
     <div id="modal-detail" class="fixed inset-0 z-[150] modal-overlay hidden items-center justify-center p-4">
         <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
             <div id="print-area" class="p-6 md:p-10 overflow-y-auto no-scrollbar flex-1">
                 <div class="flex justify-between items-start mb-8 pb-6 border-b border-slate-100">
-                    <div class="flex items-center gap-3"><img src="https://lh3.googleusercontent.com/d/14XvFbNETCuybdeUeH6BPrPaC33uBijMc" alt="Logo" class="h-10 md:h-12 object-contain" /><div><h4 class="text-[10px] font-black uppercase text-blue-900 tracking-widest">Transwisata</h4><p class="text-xs md:text-sm font-black text-blue-900">Prima Aviation</p></div></div>
-                    <div class="text-right"><h3 class="text-sm md:text-lg font-black text-slate-800 uppercase tracking-tight">Formulir Cuti</h3><p id="detail-id" class="text-[9px] md:text-xs font-bold text-slate-400 tracking-widest mt-1">#TWA-000</p></div>
+                    <div class="flex items-center gap-3">
+                        <img src="https://lh3.googleusercontent.com/d/14XvFbNETCuybdeUeH6BPrPaC33uBijMc" alt="Logo" class="h-10 md:h-12 object-contain" />
+                        <div>
+                            <h4 class="text-[10px] font-black uppercase text-blue-900 tracking-widest">Transwisata</h4>
+                            <p class="text-xs md:text-sm font-black text-blue-900">Prima Aviation</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <h3 class="text-sm md:text-lg font-black text-slate-800 uppercase tracking-tight">Formulir Cuti Karyawan</h3>
+                        <p id="detail-id" class="text-[9px] md:text-xs font-bold text-slate-400 tracking-widest mt-1">#TWA-000</p>
+                    </div>
                 </div>
                 <div id="modal-body" class="space-y-6"></div>
             </div>
-            <div class="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 no-print shrink-0"><button onclick="closeDetail()" class="flex-1 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-600 hover:bg-slate-100 transition-all text-xs">Kembali</button><button onclick="window.print()" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 shadow-lg transition-all flex items-center justify-center gap-2 text-xs"><i class="fas fa-print"></i> Cetak PDF</button></div>
+            <div class="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 no-print shrink-0">
+                <button onclick="closeDetail()" class="flex-1 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-600 hover:bg-slate-100 transition-all text-xs">Kembali</button>
+                <button onclick="window.print()" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 shadow-lg transition-all flex items-center justify-center gap-2 text-xs">
+                    <i class="fas fa-print"></i> Cetak PDF / Simpan
+                </button>
+            </div>
         </div>
     </div>
 
@@ -583,10 +617,8 @@
             const isHeadDecision = currentUser.role === ROLES.HEAD;
             const isHRDDecision = currentUser.role === ROLES.HRD;
             
-            // Perbarui status utama
             r.Status = isApproveAction ? (isHeadDecision ? 'HRD_APPROVAL' : 'APPROVED') : 'REJECTED';
             
-            // SESUAI SCREENSHOT: Key harus 'HeadNote' dan 'HRDNote' (Tanpa Spasi)
             if (isHeadDecision) {
                 r.HeadNote = note;
             } else {
@@ -598,10 +630,8 @@
             closeNoteModal(); 
             showToast('Memproses & Menyimpan...', 'success'); 
             
-            // 1. Simpan perubahan request ke Database (Google Sheet)
             const saveRes = await callGAS('saveRequest', r);
             
-            // 2. Jika status FINAL (APPROVED), update kuota ke Database
             if (saveRes.status === 'success' && r.Status === 'APPROVED') {
                 const u = users.find(usr => usr.Name === r.Name);
                 if (u) {
@@ -612,7 +642,6 @@
                 }
             }
 
-            // 3. Sinkronisasi ulang dengan jeda singkat untuk stabilitas data di Google Sheet
             if (saveRes.status === 'success') {
                 setTimeout(async () => {
                     await fetchFromSheet(); 
@@ -623,7 +652,6 @@
                 showToast('Gagal menyimpan ke Database!', 'error');
             }
             
-            // 4. Pengiriman WA dilakukan secara async
             setTimeout(() => {
                 if (isHeadDecision) {
                     const decisionText = isApproveAction ? '*MENYETUJUI*' : '*MENOLAK*';
@@ -704,6 +732,7 @@
         $('leave-request-form').addEventListener('submit', async (e) => {
             e.preventDefault(); 
             const hInfo = heads.find(h => h.ID == $('r-target-head').value);
+            const durValue = parseInt($('r-duration-view').innerText);
             const payload = {
                 ID: 'TWA-' + Date.now(), 
                 Name: currentUser.name, 
@@ -713,7 +742,7 @@
                 Type: $('r-type').value, 
                 Start: $('r-start').value, 
                 End: $('r-end').value,
-                Duration: parseInt($('r-duration-view').innerText), 
+                Duration: durValue, 
                 Reason: $('r-reason').value, 
                 Handover: $('r-handover').value,
                 Phone: currentUser.data.Phone, 
@@ -724,7 +753,6 @@
             showToast('Mengirim...');
             await callGAS('saveRequest', payload);
             
-            // Format Notifikasi WhatsApp sesuai request terbaru
             const headMsg = `*NOTIFIKASI PENGJUAN CUTI*\n\n` +
                           `Yth. ${hInfo.Position},\n\n` +
                           `Ada pengajuan cuti baru dari *${payload.Name}* (${payload.Position}).\n\n` +
@@ -743,52 +771,59 @@
         });
 
         function showDetail(id) {
-            const r = leaveRequests.find(req => req.ID == id); if (!r) return;
+            const r = leaveRequests.find(req => req.ID == id); 
+            if (!r) return;
+            
             $('detail-id').innerText = '#' + r.ID;
             let stCol = r.Status === 'APPROVED' ? 'text-emerald-600' : 'text-amber-600';
+            
             $('modal-body').innerHTML = `
-                <div class="grid grid-cols-2 gap-8 text-sm">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm">
                     <div class="space-y-4">
-                        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Karyawan</p><p class="font-bold text-slate-800">${r.Name}</p></div>
+                        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nama Lengkap</p><p class="font-bold text-slate-800 text-base">${r.Name}</p></div>
                         <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Divisi / Jabatan</p><p class="font-semibold text-slate-600">${r.Division || '-'} / ${r.Position || '-'}</p></div>
+                        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Delegasi Tugas (Handover)</p><p class="font-bold text-blue-600">${r.Handover || '-'}</p></div>
                     </div>
                     <div class="space-y-4">
-                        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Periode</p><p class="font-bold text-slate-800">${formatDate(r.Start)} - ${formatDate(r.End)}</p></div>
-                        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</p><p class="font-black uppercase ${stCol}">${r.Status}</p></div>
+                        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipe Cuti</p><p class="font-bold text-slate-800">${r.Type}</p></div>
+                        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Periode & Durasi</p><p class="font-bold text-slate-800">${formatDate(r.Start)} - ${formatDate(r.End)} (${r.Duration || 0} Hari)</p></div>
+                        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Saat Ini</p><p class="font-black uppercase ${stCol}">${r.Status}</p></div>
                     </div>
-                    <div class="col-span-2 pt-6 border-t border-slate-100">
+                    <div class="md:col-span-2 pt-6 border-t border-slate-100">
                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Alasan Pengajuan</p>
                         <p class="p-4 bg-slate-50 rounded-2xl italic text-slate-600 border border-slate-100">"${r.Reason || '-'}"</p>
                     </div>
-                    <div class="col-span-2 pt-4">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Catatan Approval</p>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="p-3 bg-blue-50 rounded-xl border border-blue-100"><p class="text-[8px] font-bold text-blue-400 uppercase">Head Note</p><p class="text-xs italic text-slate-600">${r.HeadNote || '-'}</p></div>
-                            <div class="p-3 bg-purple-50 rounded-xl border border-purple-100"><p class="text-[8px] font-bold text-purple-400 uppercase">HRD Note</p><p class="text-xs italic text-slate-600">${r.HRDNote || '-'}</p></div>
+                    <div class="md:col-span-2 pt-4">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Catatan Approval (Notes)</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="p-4 bg-blue-50 rounded-xl border border-blue-100"><p class="text-[8px] font-black text-blue-400 uppercase mb-1">Head Dept Note</p><p class="text-xs italic text-slate-600">${r.HeadNote || '-'}</p></div>
+                            <div class="p-4 bg-purple-50 rounded-xl border border-purple-100"><p class="text-[8px] font-black text-purple-400 uppercase mb-1">HRD Note</p><p class="text-xs italic text-slate-600">${r.HRDNote || '-'}</p></div>
                         </div>
                     </div>
-                    <div class="col-span-2 grid grid-cols-3 gap-4 pt-12 text-center mt-12">
+                    <div class="md:col-span-2 grid grid-cols-3 gap-4 pt-12 text-center mt-8">
                         <div><p class="text-[9px] font-black uppercase text-slate-400 mb-16">Diajukan Oleh,</p><p class="font-bold border-t border-slate-300 pt-2">${r.Name}</p></div>
                         <div><p class="text-[9px] font-black uppercase text-slate-400 mb-16">Disetujui Oleh,</p><p class="font-bold border-t border-slate-300 pt-2">Head Dept</p></div>
                         <div><p class="text-[9px] font-black uppercase text-slate-400 mb-16">Diketahui Oleh,</p><p class="font-bold border-t border-slate-300 pt-2">HR Manager</p></div>
                     </div>
                 </div>`;
-            $('modal-detail').classList.remove('hidden'); $('modal-detail').classList.add('flex');
+            $('modal-detail').classList.remove('hidden'); 
+            $('modal-detail').classList.add('flex');
         }
 
-        function closeDetail() { $('modal-detail').classList.add('hidden'); }
-        function closeNoteModal() { $('modal-note').classList.add('hidden'); }
-        function closeRequestModal() { $('modal-request').classList.add('hidden'); }
+        function closeDetail() { $('modal-detail').classList.add('hidden'); $('modal-detail').classList.remove('flex'); }
+        function closeNoteModal() { $('modal-note').classList.add('hidden'); $('modal-note').classList.remove('flex'); }
+        function closeRequestModal() { $('modal-request').classList.add('hidden'); $('modal-request').classList.remove('flex'); }
         function showToast(msg, type = 'success') { $('toast-msg').innerText = msg; $('toast').classList.remove('hidden'); setTimeout(() => $('toast').classList.add('hidden'), 3000); }
         function triggerWhatsApp(p, m) { if (!p) return; let c = String(p).replace(/[^0-9]/g, ''); if (c.startsWith('0')) c = '62' + c.substring(1); else if (c.startsWith('8')) c = '62' + c; window.location.href = `whatsapp://send?phone=${c}&text=${encodeURIComponent(m)}`; }
         function formatDate(d) { if (!d) return "-"; const date = new Date(d); return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }); }
+        
         function toggleMobileMenu() { 
-    isMobileMenuOpen = !isMobileMenuOpen; 
-    const overlay = $('mobile-nav-overlay');
-    overlay.classList.toggle('invisible');
-    overlay.classList.toggle('opacity-0'); // Tambahkan baris ini
-    $('mobile-nav-content').classList.toggle('-translate-x-full'); 
-}
+            isMobileMenuOpen = !isMobileMenuOpen; 
+            const overlay = $('mobile-nav-overlay');
+            overlay.classList.toggle('invisible');
+            overlay.classList.toggle('opacity-0');
+            $('mobile-nav-content').classList.toggle('-translate-x-full'); 
+        }
         
         function showUserCard(id, type) {
             const user = type === 'staff' ? users.find(u => u.ID.toString() === id.toString()) : heads.find(h => h.ID.toString() === id.toString()); if (!user) return;
@@ -801,9 +836,13 @@
             nl.onclick = () => { closeUserCard(); type === 'staff' ? deleteUser(id) : deleteHead(id); };
             $('modal-user-card').classList.remove('hidden'); $('modal-user-card').classList.add('flex');
         }
-        function closeUserCard() { $('modal-user-card').classList.add('hidden'); }
+        function closeUserCard() { $('modal-user-card').classList.add('hidden'); $('modal-user-card').classList.remove('flex'); }
         
-        window.onload = async () => { $('current-date').innerText = formatDate(new Date()); await fetchFromSheet(); $('global-loader').classList.add('loader-hidden'); };
+        window.onload = async () => { 
+            $('current-date').innerText = formatDate(new Date()); 
+            await fetchFromSheet(); 
+            $('global-loader').classList.add('loader-hidden'); 
+        };
     </script>
 </body>
 </html>
