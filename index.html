@@ -225,7 +225,7 @@
             "Menikah": 3, "Menikahkan anak": 2, "Istri melahirkan / keguguran": 2, "Khitanan anak": 2, "Baptis anak (2 Hari)": 2, "Keluarga serumah meninggal": 2, "Anggota keluarga serumah lain meninggal": 1
         };
 
-        let users = []; let heads = []; let leaveRequests = []; let hrdProfile = { name: 'Admin TWA', division: 'HR', position: 'Manager', email: 'hr@transwisata.com', phone: '628123456789' };
+        let users = []; let heads = []; let leaveRequests = []; let hrdProfile = { name: 'Admin TWA', division: 'HR', position: 'Manager', email: 'hr@transwisata.com', phone: '628123456789', LastResetYear: '0' };
         const ROLES = { STAFF: 'staff', HEAD: 'head', HRD: 'hrd' };
         let currentUser = null; 
         let editingUserId = null; 
@@ -234,7 +234,7 @@
         let pendingApprovalId = null; let isApproveAction = true; let isMobileMenuOpen = false; let isSyncing = false;
         const $ = (id) => document.getElementById(id);
 
-        // Helper untuk memastikan format tanggal selalu YYYY-MM-DD (menghindari UTC pergeseran)
+        // Helper to ensure YYYY-MM-DD
         function toISODateString(val) {
             if (!val) return "";
             if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
@@ -268,13 +268,32 @@
                         const updated = users.find(u => u.ID.toString() === currentUser.data.ID.toString());
                         if (updated) currentUser.data = updated;
                     }
+                    await checkAndResetAnnualQuotas();
                     return true;
                 }
             } catch (err) { 
                 console.error('Fetch error:', err);
-                if ($('sync-status-text')) $('sync-status-text').innerText = "Gagal menghubungkan ke Database";
+                if ($('sync-status-text')) $('sync-status-text').innerText = "Gagal Sinkron";
             } 
             return false;
+        }
+
+        async function checkAndResetAnnualQuotas() {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const lastReset = parseInt(hrdProfile.LastResetYear) || 0;
+
+            if (now.getMonth() === 0 && now.getDate() >= 1 && lastReset < currentYear) {
+                for (let u of users) {
+                    u.AnnualQuota = 12;
+                    u.SpecialQuota = 40;
+                    u.id = u.ID;
+                    await callGAS('saveUser', u);
+                }
+                hrdProfile.LastResetYear = currentYear.toString();
+                await callGAS('saveProfile', hrdProfile);
+                showToast(`Kuota Tahunan Di-reset ke ${currentYear}!`, 'success');
+            }
         }
 
         async function manualSync() {
@@ -282,7 +301,7 @@
             $('sync-icon').classList.add('spin-sync'); 
             $('sync-btn').classList.add('opacity-50'); 
             $('global-loader').classList.remove('loader-hidden');
-            $('sync-status-text').innerText = "Menghubungkan ke Database...";
+            $('sync-status-text').innerText = "Sinkronisasi...";
             const success = await fetchFromSheet();
             setTimeout(() => { 
                 $('sync-icon').classList.remove('spin-sync'); 
@@ -293,9 +312,7 @@
                     showToast('Database Sinkron!'); 
                     const currentTab = document.querySelector('.nav-item.text-white')?.id.replace('nav-', ''); 
                     if(currentTab) switchTab(currentTab); 
-                } else { 
-                    showToast('Sync Gagal! Periksa koneksi/izin API.', 'error'); 
-                } 
+                }
             }, 600);
         }
 
@@ -458,13 +475,12 @@
                 }
             });
             
+            payload.id = payload.ID;
             closeEditModal(); 
             const res = await callGAS(type === 'staff' ? 'saveUser' : 'saveHead', payload);
             if (res.status === 'success') {
                 showToast('Data Berhasil Diperbarui!');
                 setTimeout(async () => { await fetchFromSheet(); type === 'staff' ? loadEmployeeManagerUI() : loadHeadManagerUI(); }, 800);
-            } else {
-                showToast('Gagal menyimpan perubahan: ' + (res.message || 'Error Unknown'), 'error');
             }
         });
 
@@ -491,7 +507,7 @@
         function setupNavigation() {
             const nav = $('dynamic-nav'); const mNav = $('mobile-dynamic-nav'); nav.innerHTML = mNav.innerHTML = '';
             const menu = [{ id: 'dashboard', label: 'Dashboard', icon: 'th-large', roles: [ROLES.STAFF, ROLES.HEAD, ROLES.HRD] }, { id: 'request_trigger', label: 'Ajukan Cuti', icon: 'plus-circle', roles: [ROLES.STAFF], action: openRequestModal }, { id: 'employees', label: 'Karyawan', icon: 'users-cog', roles: [ROLES.HRD] }, { id: 'heads', label: 'Head Dept', icon: 'user-tie', roles: [ROLES.HRD] }, { id: 'approval', label: 'Persetujuan', icon: 'check-double', roles: [ROLES.HEAD, ROLES.HRD] }, { id: 'history', label: 'Riwayat', icon: 'history', roles: [ROLES.STAFF, ROLES.HEAD, ROLES.HRD] }, { id: 'hrd_profile', label: 'Profil HRD', icon: 'id-card', roles: [ROLES.HRD] }];
-            menu.forEach(it => { if (it.roles.includes(currentUser.role)) { const click = it.action ? `openRequestModal()` : `switchTab('${it.id}')`; nav.innerHTML += `<a href="#" onclick="${click}" id="nav-${it.id}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-blue-100 hover:bg-blue-800 group"><i class="fas fa-${it.icon} w-5"></i><span>${it.label}</span></a>`; mNav.innerHTML += `<a href="#" onclick="${click}" id="mobile-nav-${it.id}" class="mobile-nav-item flex items-center gap-4 px-5 py-4 rounded-2xl transition-all text-white/80 hover:bg-white/10 mb-1"><i class="fas fa-${it.icon} w-6"></i><span class="font-semibold text-sm">${it.label}</span></a>`; } });
+            menu.forEach(it => { if (it.roles.includes(currentUser.role)) { const click = (it.action ? `openRequestModal()` : `switchTab('${it.id}')`) + "; if(window.innerWidth < 768) toggleMobileMenu();";; nav.innerHTML += `<a href="#" onclick="${click}" id="nav-${it.id}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-blue-100 hover:bg-blue-800 group"><i class="fas fa-${it.icon} w-5"></i><span>${it.label}</span></a>`; mNav.innerHTML += `<a href="#" onclick="${click}" id="mobile-nav-${it.id}" class="mobile-nav-item flex items-center gap-4 px-5 py-4 rounded-2xl transition-all text-white/80 hover:bg-white/10 mb-1"><i class="fas fa-${it.icon} w-6"></i><span class="font-semibold text-sm">${it.label}</span></a>`; } });
         }
 
         function switchTab(tab) {
@@ -513,13 +529,48 @@
         }
 
         function loadHistory() {
-            let data = leaveRequests; if (currentUser.role === ROLES.STAFF) data = data.filter(r => r.Name === currentUser.name);
-            $('main-content').innerHTML = `<div class="animate-fade-in space-y-6"><h3 class="font-black uppercase text-slate-800 tracking-tight">Riwayat Cuti</h3><div class="glass-card rounded-[2rem] overflow-hidden shadow-sm"><table class="w-full text-left"><thead class="bg-slate-50 text-[10px] font-black uppercase border-b"><tr><th class="px-8 py-5">Karyawan</th><th class="px-6 py-5">Periode</th><th class="px-6 py-5">Status</th><th class="px-8 py-5 text-right">Aksi</th></tr></thead><tbody class="divide-y divide-slate-50">${data.map(r => `<tr><td class="px-8 py-5"><p class="text-xs font-black">${r.Name}</p><p class="text-[9px] text-slate-400 uppercase">${r.Position}</p></td><td class="px-6 py-5"><p class="text-[10px] font-bold">${r.Type}</p><p class="text-[9px] text-slate-500">${formatDate(r.Start)}</p></td><td class="px-6 py-5"><span class="px-3 py-1 rounded-full text-[8px] font-black uppercase ${r.Status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : (r.Status === 'REJECTED' ? 'bg-red-100 text-red-600' : (r.Status === 'CANCELLED' ? 'bg-slate-100 text-slate-400' : 'bg-amber-100 text-amber-600'))}">${r.Status}</span></td><td class="px-8 py-5 text-right flex justify-end items-center gap-3">${currentUser.role === ROLES.STAFF && !['APPROVED','REJECTED','CANCELLED'].includes(r.Status) ? `<button onclick="cancelRequest('${r.ID}')" class="text-red-500 text-[10px] font-bold uppercase"><i class="fas fa-times-circle"></i> Batal</button>` : ''}<button onclick="showDetail('${r.ID}')" class="text-blue-600"><i class="fas fa-eye"></i></button></td></tr>`).join('')}</tbody></table></div></div>`;
+            let data = [...leaveRequests]; 
+            if (currentUser.role === ROLES.STAFF) data = data.filter(r => r.Name === currentUser.name);
+
+            const grouped = data.reduce((acc, r) => {
+                const d = new Date(r.Start);
+                if (isNaN(d.getTime())) return acc;
+                const monthYear = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+                if (!acc[monthYear]) acc[monthYear] = []; acc[monthYear].push(r); return acc;
+            }, {});
+
+            const sortedKeys = Object.keys(grouped).sort((a, b) => new Date(b.split(' ').reverse().join(' ')) - new Date(a.split(' ').reverse().join(' ')));
+
+            let historyHTML = `<div class="animate-fade-in space-y-8"><h3 class="font-black uppercase text-slate-800 tracking-tight">Riwayat Cuti</h3>`;
+            if (sortedKeys.length === 0) {
+                historyHTML += `<p class="text-slate-400 italic py-20 text-center glass-card rounded-[2rem]">Belum ada riwayat pengajuan.</p>`;
+            } else {
+                sortedKeys.forEach(key => {
+                    historyHTML += `<div><h4 class="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">${key}</h4><div class="glass-card rounded-[2rem] overflow-hidden"><table class="w-full text-left"><tbody class="divide-y divide-slate-50">${grouped[key].map(r => `<tr><td class="px-8 py-5"><p class="text-xs font-black text-slate-800">${r.Name}</p><p class="text-[9px] text-slate-400 uppercase font-bold">${r.Position}</p></td><td class="px-6 py-5 font-bold text-xs text-slate-500">${formatDate(r.Start)}</td><td class="px-6 py-5"><span class="px-3 py-1 rounded-full text-[8px] font-black uppercase ${r.Status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}">${r.Status}</span></td><td class="px-8 py-5 text-right flex gap-3 justify-end">${currentUser.role === ROLES.HRD ? `<button onclick="deleteRequest('${r.ID}')" class="text-red-500"><i class="fas fa-trash-alt"></i></button>` : ''}<button onclick="showDetail('${r.ID}')" class="text-blue-600"><i class="fas fa-eye"></i></button></td></tr>`).join('')}</tbody></table></div></div>`;
+                });
+            }
+            $('main-content').innerHTML = historyHTML + `</div>`;
+        }
+
+        async function deleteRequest(id) {
+            if(!confirm("Hapus riwayat permanen? Kuota akan dikembalikan otomatis jika status 'APPROVED'.")) return;
+            const r = leaveRequests.find(req => req.ID.toString() === id.toString());
+            if (r && r.Status === 'APPROVED') {
+                const u = users.find(usr => usr.Name === r.Name);
+                if (u) {
+                    const dur = parseInt(r.Duration) || 0;
+                    if (r.Type === 'Annual Leave') u.AnnualQuota = (parseInt(u.AnnualQuota) || 0) + dur;
+                    else u.SpecialQuota = (parseInt(u.SpecialQuota) || 0) + dur;
+                    u.id = u.ID; await callGAS('saveUser', u);
+                }
+            }
+            await callGAS('deleteRequest', { id: id });
+            await fetchFromSheet(); loadHistory();
         }
 
         function loadApprovalList() {
             const pending = leaveRequests.filter(r => (currentUser.role === ROLES.HEAD && r.Status === 'HEAD_DEPT_REVIEW' && r.TargetHeadId.toString() === currentUser.data.ID.toString()) || (currentUser.role === ROLES.HRD && r.Status === 'HRD_APPROVAL'));
-            $('main-content').innerHTML = `<div class="animate-fade-in space-y-6"><h3 class="font-black uppercase text-slate-800">Antrean Persetujuan</h3><div class="grid grid-cols-1 gap-4">${pending.length === 0 ? '<p class="text-slate-400 italic py-10 text-center glass-card rounded-3xl">Tidak ada antrean.</p>' : pending.map(r => `<div class="glass-card p-6 rounded-3xl flex justify-between items-center shadow-sm"><div class="flex items-center gap-4"><button onclick="showDetail('${r.ID}')" class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center transition-all hover:bg-blue-600 hover:text-white"><i class="fas fa-info"></i></button><div><h4 class="font-black text-slate-800">${r.Name}</h4><p class="text-xs font-bold text-blue-600 uppercase">${r.Type}</p><p class="text-[10px] text-slate-500">${formatDate(r.Start)}</p></div></div><div class="flex gap-2"><button onclick="handleApprovalAction('${r.ID}', false)" class="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold text-[10px] uppercase">Tolak</button><button onclick="handleApprovalAction('${r.ID}', true)" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg">Setuju</button></div></div>`).join('')}</div></div>`;
+            $('main-content').innerHTML = `<div class="animate-fade-in space-y-6"><h3 class="font-black uppercase text-slate-800">Antrean Persetujuan</h3><div class="grid grid-cols-1 gap-4">${pending.length === 0 ? '<p class="text-slate-400 italic py-10 text-center glass-card rounded-3xl">Kosong.</p>' : pending.map(r => `<div class="glass-card p-6 rounded-3xl flex justify-between items-center"><div><h4 class="font-black text-slate-800">${r.Name}</h4><p class="text-xs font-bold text-blue-600 uppercase">${r.Type}</p></div><div class="flex gap-2"><button onclick="handleApprovalAction('${r.ID}', false)" class="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold text-[10px] uppercase">Tolak</button><button onclick="handleApprovalAction('${r.ID}', true)" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg">Setuju</button></div></div>`).join('')}</div></div>`;
         }
 
         function handleApprovalAction(id, approve) { pendingApprovalId = id; isApproveAction = approve; $('note-title').innerText = approve ? 'Setujui' : 'Tolak'; $('modal-note').classList.remove('hidden'); $('modal-note').classList.add('flex'); }
@@ -535,33 +586,19 @@
             r.Status = isApproveAction ? (isHeadDecision ? 'HRD_APPROVAL' : 'APPROVED') : 'REJECTED';
             if (isHeadDecision) r.HeadNote = note; else r.HRDNote = note;
             
-            // Bersihkan properti tanggal agar tetap string YYYY-MM-DD
-            r.Start = toISODateString(r.Start);
-            r.End = toISODateString(r.End);
-            r.SubmitDate = toISODateString(r.SubmitDate || new Date());
-            r.ID = r.ID;
+            r.Start = toISODateString(r.Start); r.End = toISODateString(r.End); r.SubmitDate = toISODateString(r.SubmitDate || new Date());
             
-            closeNoteModal(); 
-            showToast('Memproses...', 'success'); 
-            loadApprovalList(); 
-            
+            closeNoteModal(); showToast('Memproses...', 'success'); loadApprovalList(); 
             await callGAS('saveRequest', r);
             
-            // WHATSAPP NOTIFICATIONS
+            // WHATSAPP
             if (isHeadDecision) {
-                // Notifikasi dari Head Dept ke User
-                const userMsg = `*UPDATE STATUS CUTI*\n\nYth. ${r.Name},\n\nPengajuan cuti Anda tanggal ${formatDate(r.SubmitDate)} ${isApproveAction ? 'telah *DISETUJUI*' : '*TIDAK DISETUJUI*'} oleh ${currentUser.data.Position}.\n\n*Detail Pengajuan:*\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Durasi: ${r.Duration} Hari\n- Alasan: ${r.Reason}\n\n${isApproveAction ? 'Silakan cek detail di aplikasi.' : `Silakan cek detail di aplikasi atau langsung menghubungi ${currentUser.data.Position}.`}\n\nTerima kasih.`;
-                if (r.Phone) triggerWhatsApp(r.Phone, userMsg);
-
-                // Notifikasi dari Head Dept ke HRD jika Setuju
-                if (isApproveAction) {
-                    const hrdMsg = `*NOTIFIKASI PENGAJUAN CUTI*\n\nYth. HRD Transwisata,\n\nBerikut ini pengajuan cuti dari anggota kami atas nama *${r.Name}* (${r.Position}) telah saya *SETUJUI*\n\n*Detail Pengajuan:*\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Durasi: ${r.Duration} Hari\n- Alasan: ${r.Reason}\n\nMohon diproses lebih lanjut.\n\nSilakan login melalui portal *ECrew Transwisata* untuk akses *ECrew Leaves System* dan memproses pengajuan ini.\n\nTerima kasih.`;
-                    if (hrdProfile.phone) triggerWhatsApp(hrdProfile.phone, hrdMsg);
-                }
+                const decisionText = isApproveAction ? '*MENYETUJUI*' : '*MENOLAK*';
+                const hrdMsg = `*UPDATE PENGAJUAN CUTI*\n\nYth. HRD Transwisata,\n\nSaya telah ${decisionText} cuti dari *${r.Name}* (${r.Position}).\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Catatan: ${note || '-'}\n\nMohon diproses di sistem. Terima kasih.`;
+                if (hrdProfile.phone) triggerWhatsApp(hrdProfile.phone, hrdMsg);
             } else if (isHRDDecision) {
-                // Notifikasi dari HRD ke User
-                const userMsg = `*UPDATE STATUS CUTI*\n\nYth. ${r.Name},\n\nPengajuan cuti Anda tanggal ${formatDate(r.SubmitDate)} ${isApproveAction ? 'telah *DISETUJUI*' : '*TIDAK DISETUJUI*'} oleh HRD Transwisata.\n\n*Detail Pengajuan:*\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Durasi: ${r.Duration} Hari\n- Alasan: ${r.Reason}\n\n${isApproveAction ? 'Silakan cek detail di aplikasi.' : 'Silakan cek detail di aplikasi atau langsung menghubungi HRD Transwisata.'}\n\nTerima kasih.`;
-                if (r.Phone) triggerWhatsApp(r.Phone, userMsg);
+                const userMsg = `*UPDATE STATUS CUTI*\n\nYth. ${r.Name},\n\nPengajuan cuti Anda telah *DISETUJUI* oleh HRD Transwisata.\n\nTerima kasih.`;
+                if (r.Phone && isApproveAction) triggerWhatsApp(r.Phone, userMsg);
             }
             
             if (r.Status === 'APPROVED') {
@@ -570,26 +607,18 @@
                     const dur = parseInt(r.Duration) || 0;
                     if (r.Type === 'Annual Leave') u.AnnualQuota = Math.max(0, (parseInt(u.AnnualQuota) || 0) - dur);
                     else u.SpecialQuota = Math.max(0, (parseInt(u.SpecialQuota) || 0) - dur);
-                    u.ID = u.ID;
-                    await callGAS('saveUser', u);
+                    u.ID = u.ID; await callGAS('saveUser', u);
                 }
             }
-            
-            setTimeout(async () => { await fetchFromSheet(); switchTab('approval'); showToast('Berhasil Disimpan!'); }, 800);
+            await fetchFromSheet(); switchTab('approval');
         }
 
         async function cancelRequest(id) { 
-            if(!confirm("Batalkan pengajuan ini? Saldo akan dikembalikan otomatis.")) return; 
+            if(!confirm("Batalkan pengajuan ini?")) return; 
             const r = leaveRequests.find(req => req.ID.toString() === id.toString()); 
             if (!r) return; 
-            const oldStatus = r.Status;
-            r.Status = 'CANCELLED'; 
-            
-            // Bersihkan properti tanggal
-            r.Start = toISODateString(r.Start);
-            r.End = toISODateString(r.End);
-            r.ID = r.ID;
-            
+            const oldStatus = r.Status; r.Status = 'CANCELLED'; 
+            r.Start = toISODateString(r.Start); r.End = toISODateString(r.End); r.ID = r.ID;
             showToast('Membatalkan...', 'success'); 
             await callGAS('saveRequest', r); 
             if (oldStatus === 'APPROVED') {
@@ -601,130 +630,122 @@
                     u.ID = u.ID; await callGAS('saveUser', u);
                 }
             }
-            setTimeout(async () => { await fetchFromSheet(); loadHistory(); showToast('Saldo Dipulihkan!'); }, 800); 
-        }
-
-        function closeNoteModal() { 
-            $('note-text').value = ''; 
-            $('modal-note').classList.add('hidden'); 
-            $('modal-note').classList.remove('flex'); 
+            await fetchFromSheet(); loadHistory();
         }
 
         function loadHRDProfile() {
-            $('main-content').innerHTML = `<div class="animate-fade-in max-w-xl mx-auto"><div class="glass-card p-10 rounded-[2.5rem] shadow-xl space-y-6"><h3 class="text-xl font-black uppercase text-blue-900 border-b pb-4">Profil HR Dept</h3><form id="hr-profile-form" class="space-y-4"><div><label class="text-[10px] font-black uppercase text-slate-400">Nama Manager</label><input type="text" id="hr-p-name" value="${hrdProfile.name}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div><div><label class="text-[10px] font-black uppercase text-slate-400">Email Notifikasi</label><input type="email" id="hr-p-email" value="${hrdProfile.email}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div><div><label class="text-[10px] font-black uppercase text-slate-400">WhatsApp</label><input type="text" id="hr-p-phone" value="${hrdProfile.phone}" class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm"></div><button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-xs shadow-lg mt-4">Simpan Profil</button></form></div></div>`;
-            $('hr-profile-form').addEventListener('submit', async (e) => { e.preventDefault(); hrdProfile = { name: $('hr-p-name').value, email: $('hr-p-email').value, phone: $('hr-p-phone').value }; await callGAS('saveProfile', hrdProfile); showToast('Profil Diperbarui!'); });
+            $('main-content').innerHTML = `<div class="animate-fade-in max-w-xl mx-auto"><div class="glass-card p-10 rounded-[2.5rem] shadow-xl space-y-6"><h3 class="text-xl font-black uppercase text-blue-900 border-b pb-4">Profil HR Dept</h3><form id="hr-profile-form" class="space-y-4"><div><label class="text-[10px] font-black uppercase text-slate-400">WhatsApp HRD</label><input type="text" id="hr-p-phone" value="${hrdProfile.phone}" placeholder="08..." class="w-full px-4 py-3 rounded-xl border bg-slate-50 text-sm font-bold"></div><button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-xs shadow-lg mt-4">Simpan Profil</button></form></div></div>`;
+            $('hr-profile-form').addEventListener('submit', async (e) => { 
+                e.preventDefault(); 
+                hrdProfile.phone = $('hr-p-phone').value.replace(/[^0-9]/g, '');
+                await callGAS('saveProfile', hrdProfile); showToast('Profil Disimpan!'); 
+            });
         }
 
         function openRequestModal() {
+            const h = $('r-target-head'); h.innerHTML = '<option value="">Pilih Head Dept</option>';
+            heads.forEach(head => h.innerHTML += `<option value="${head.ID}">${head.Position} - ${head.Name}</option>`);
             const d = currentUser.data || { Division: '-', Position: '-' }; $('r-division').value = d.Division; $('r-position').value = d.Position;
-            const t = $('r-target-head'); t.innerHTML = '<option value="">Pilih Head Dept</option>'; heads.forEach(h => t.innerHTML += `<option value="${h.ID}" data-pos="${h.Position}">${h.Position} (${h.Name})</option>`);
-            const h = $('r-handover'); h.innerHTML = '<option value="">Pilih Rekan</option>'; users.forEach(u => { if(u.Name !== currentUser.name) h.innerHTML += `<option value="${u.Name}">${u.Name}</option>`; });
-            $('r-duration-view').innerText = "0 Hari"; $('r-quota-warning').classList.add('hidden'); $('r-duration-view').classList.remove('text-red-500'); $('r-duration-view').classList.add('text-blue-700'); $('r-submit-btn').disabled = false; $('r-submit-btn').classList.remove('opacity-50', 'cursor-not-allowed'); $('modal-request').classList.remove('hidden'); $('modal-request').classList.add('flex');
+            const hand = $('r-handover'); hand.innerHTML = '<option value="">Pilih Rekan</option>';
+            users.forEach(u => { if(u.Name !== currentUser.name) hand.innerHTML += `<option value="${u.Name}">${u.Name}</option>`; });
+            $('modal-request').classList.remove('hidden'); $('modal-request').classList.add('flex');
         }
-        function closeRequestModal() { $('modal-request').classList.add('hidden'); $('modal-request').classList.remove('flex'); }
 
-        function handleDateChange() { if (SPECIAL_LEAVE_RULES[$('r-type').value]) autoCalculateEndDate(); updateDur(); }
-        function onLeaveTypeChange() { const type = $('r-type').value; const end = $('r-end'); if (SPECIAL_LEAVE_RULES[type]) { end.readOnly = true; end.classList.add('bg-slate-100'); autoCalculateEndDate(); } else { end.readOnly = false; end.classList.remove('bg-slate-100'); } updateDur(); }
-        function autoCalculateEndDate() { const type = $('r-type').value; const start = $('r-start').value; const dur = SPECIAL_LEAVE_RULES[type]; if (start && dur) { const sd = new Date(start); const ed = new Date(sd); ed.setDate(sd.getDate() + (dur - 1)); $('r-end').value = ed.toISOString().split('T')[0]; } }
+        function onLeaveTypeChange() {
+            const type = $('r-type').value; const end = $('r-end');
+            if (SPECIAL_LEAVE_RULES[type]) {
+                end.readOnly = true; end.classList.add('bg-slate-100');
+                const startVal = $('r-start').value;
+                if(startVal) {
+                    const d = new Date(startVal); d.setDate(d.getDate() + (SPECIAL_LEAVE_RULES[type]-1));
+                    end.value = toISODateString(d);
+                }
+            } else { end.readOnly = false; end.classList.remove('bg-slate-100'); }
+            updateDur();
+        }
+
+        function handleDateChange() { onLeaveTypeChange(); }
 
         function updateDur() {
-            const s = $('r-start').value; const e = $('r-end').value; const type = $('r-type').value;
-            let duration = 0; if (SPECIAL_LEAVE_RULES[type]) duration = SPECIAL_LEAVE_RULES[type]; else if (s && e) { const start = new Date(s); const end = new Date(e); duration = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1; if (duration < 0) duration = 0; }
-            $('r-duration-view').innerText = duration + " Hari"; 
-            if (currentUser && currentUser.data && duration > 0 && type !== "") {
-                const annualQuota = parseInt(currentUser.data.AnnualQuota) || 0; const specialQuota = parseInt(currentUser.data.SpecialQuota) || 0;
-                let isExceeding = false; if (type === 'Annual Leave') isExceeding = duration > annualQuota; else isExceeding = duration > specialQuota;
-                const warning = $('r-quota-warning'); const view = $('r-duration-view'); const btn = $('r-submit-btn');
-                if (isExceeding) { warning.classList.remove('hidden'); view.classList.replace('text-blue-700', 'text-red-500'); btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); }
-                else { warning.classList.add('hidden'); view.classList.replace('text-red-500', 'text-blue-700'); btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); }
-            }
+            const s = $('r-start').value, e = $('r-end').value, type = $('r-type').value;
+            if(!s || !e) return;
+            const start = new Date(s), end = new Date(e);
+            let dur = Math.ceil((end - start) / 86400000) + 1;
+            $('r-duration-view').innerText = (dur < 0 ? 0 : dur) + " Hari";
+            const quota = type === 'Annual Leave' ? currentUser.data.AnnualQuota : (type === 'Special Leave' ? currentUser.data.SpecialQuota : 99);
+            const warn = $('r-quota-warning'), btn = $('r-submit-btn');
+            if(dur > quota && !SPECIAL_LEAVE_RULES[type]) { warn.classList.remove('hidden'); btn.disabled = true; btn.classList.add('opacity-50'); }
+            else { warn.classList.add('hidden'); btn.disabled = false; btn.classList.remove('opacity-50'); }
         }
 
         $('leave-request-form').addEventListener('submit', async (e) => {
-            e.preventDefault(); 
-            const btn = $('r-submit-btn'); if (btn.disabled) return;
-            
-            const headSelect = $('r-target-head');
-            if (!headSelect.value) { showToast('Pilih Head Dept terlebih dahulu!', 'error'); return; }
-            
-            const headOption = headSelect.options[headSelect.selectedIndex];
-            const headPosition = headOption.getAttribute('data-pos') || "Head Dept";
-            const hInfo = heads.find(h => h.ID.toString() === headSelect.value.toString());
-            
-            const txt = btn.innerText; btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Mengirim...`; 
-            showToast('Sedang memproses...', 'success');
-            
-            // Pastikan data user ada
-            if (!currentUser || !currentUser.data) { showToast('Sesi error, silakan login ulang', 'error'); return; }
-
-            const payload = { 
-                ID: 'TWA-' + Math.floor(1000 + Math.random()*9000), 
-                Name: currentUser.name, 
-                Division: currentUser.data.Division || "-", 
-                Position: currentUser.data.Position || "-", 
-                TargetHeadId: headSelect.value, 
-                Type: $('r-type').value, 
-                Duration: parseInt($('r-duration-view').innerText) || 0, 
-                Start: toISODateString($('r-start').value), 
-                End: toISODateString($('r-end').value), 
-                Status: 'HEAD_DEPT_REVIEW', 
-                Reason: $('r-reason').value, 
-                Handover: $('r-handover').value, 
-                Phone: currentUser.data.Phone || "",
-                SubmitDate: toISODateString(new Date())
+            e.preventDefault(); const hInfo = heads.find(h => h.ID == $('r-target-head').value);
+            const payload = {
+                ID: 'TWA-' + Date.now(), Name: currentUser.name, Division: currentUser.data.Division, Position: currentUser.data.Position,
+                TargetHeadId: $('r-target-head').value, Type: $('r-type').value, Start: $('r-start').value, End: $('r-end').value,
+                Duration: parseInt($('r-duration-view').innerText), Reason: $('r-reason').value, Handover: $('r-handover').value,
+                Phone: currentUser.data.Phone, Status: 'HEAD_DEPT_REVIEW', SubmitDate: toISODateString(new Date())
             };
-            
-            try {
-                const res = await callGAS('saveRequest', payload);
-                if (res.status === 'success') { 
-                    const waMsg = `*NOTIFIKASI PENGAJUAN CUTI*\n\nYth. ${headPosition},\n\nAda pengajuan cuti baru dari *${currentUser.name}* (${currentUser.data.Position}).\n\n*Detail Pengajuan:*\n- Tipe: ${payload.Type}\n- Periode: ${formatDate(payload.Start)} s/d ${formatDate(payload.End)}\n- Durasi: ${payload.Duration} Hari\n- Alasan: ${payload.Reason}\n\nSilakan login melalui portal *ECrew Transwisata* untuk akses *ECrew Leaves System* dan memproses pengajuan ini.\n\nTerima kasih.`;
-                    if (hInfo?.Phone) triggerWhatsApp(hInfo.Phone, waMsg); 
-                    
-                    showToast('Berhasil Dikirim!'); 
-                    closeRequestModal(); 
-                    setTimeout(async () => { await fetchFromSheet(); loadDashboard(); }, 1200); 
-                } else {
-                    throw new Error(res.message || "Gagal menyimpan di database");
-                }
-            } catch (error) {
-                showToast('Gagal mengirim: ' + error.message, 'error'); 
-                btn.disabled = false; btn.innerText = txt; 
-            }
+            showToast('Mengirim...');
+            await callGAS('saveRequest', payload);
+            triggerWhatsApp(hInfo.Phone, `*PENGAJUAN CUTI BARU*\nAda pengajuan dari *${payload.Name}*.\n- Tipe: ${payload.Type}\n- Alasan: ${payload.Reason}\n\nCek sistem.`);
+            closeRequestModal(); await fetchFromSheet(); switchTab('dashboard');
         });
 
         function showDetail(id) {
-            const r = leaveRequests.find(req => req.ID.toString() === id.toString()); if (!r) return;
+            const r = leaveRequests.find(req => req.ID == id); if (!r) return;
             $('detail-id').innerText = '#' + r.ID;
-            let statusClass = 'bg-amber-100 text-amber-600'; if(r.Status === 'APPROVED') statusClass = 'bg-emerald-100 text-emerald-600'; if(r.Status === 'REJECTED') statusClass = 'bg-red-100 text-red-600';
-            $('modal-body').innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm"><div class="space-y-4"><div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Karyawan</p><p class="font-bold">${r.Name}</p></div><div><p class="text-[10px] font-black text-slate-400 uppercase">Jabatan</p><p class="font-semibold">${r.Position}</p></div><div><p class="text-[10px] font-black text-slate-400 uppercase">Tipe</p><p class="font-bold text-blue-700">${r.Type}</p></div></div><div class="space-y-4"><div><p class="text-[10px] font-black text-slate-400 uppercase">Periode</p><p class="font-bold">${formatDate(r.Start)} - ${formatDate(r.End)}</p><p class="text-xs font-bold text-blue-600">${r.Duration} Hari</p></div><div><p class="text-[10px] font-black text-slate-400 uppercase">Status</p><span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${statusClass}">${r.Status}</span></div></div><div class="md:col-span-2 pt-4 border-t"><p class="text-[10px] font-black text-slate-400 uppercase mb-1">Alasan</p><p class="italic text-slate-600 bg-slate-50 p-4 rounded-2xl">"${r.Reason}"</p></div></div>`;
+            let stCol = r.Status === 'APPROVED' ? 'text-emerald-600' : 'text-amber-600';
+            $('modal-body').innerHTML = `
+                <div class="grid grid-cols-2 gap-8 text-sm">
+                    <div class="space-y-4">
+                        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Karyawan</p><p class="font-bold text-slate-800">${r.Name}</p></div>
+                        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Divisi / Jabatan</p><p class="font-semibold text-slate-600">${r.Division || '-'} / ${r.Position || '-'}</p></div>
+                    </div>
+                    <div class="space-y-4">
+                        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Periode</p><p class="font-bold text-slate-800">${formatDate(r.Start)} - ${formatDate(r.End)}</p></div>
+                        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</p><p class="font-black uppercase ${stCol}">${r.Status}</p></div>
+                    </div>
+                    <div class="col-span-2 pt-6 border-t border-slate-100">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Alasan Pengajuan</p>
+                        <p class="p-4 bg-slate-50 rounded-2xl italic text-slate-600 border border-slate-100">"${r.Reason || '-'}"</p>
+                    </div>
+                    <div class="col-span-2 grid grid-cols-3 gap-4 pt-12 text-center mt-12">
+                        <div><p class="text-[9px] font-black uppercase text-slate-400 mb-16">Diajukan Oleh,</p><p class="font-bold border-t border-slate-300 pt-2">${r.Name}</p></div>
+                        <div><p class="text-[9px] font-black uppercase text-slate-400 mb-16">Disetujui Oleh,</p><p class="font-bold border-t border-slate-300 pt-2">Head Dept</p></div>
+                        <div><p class="text-[9px] font-black uppercase text-slate-400 mb-16">Diketahui Oleh,</p><p class="font-bold border-t border-slate-300 pt-2">HR Manager</p></div>
+                    </div>
+                </div>`;
             $('modal-detail').classList.remove('hidden'); $('modal-detail').classList.add('flex');
         }
-        function closeDetail() { $('modal-detail').classList.add('hidden'); }
-        function formatDate(d) { 
-            if (!d) return "-";
-            const date = new Date(d);
-            if (isNaN(date.getTime())) return d;
-            return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }); 
-        }
-        function showToast(msg, type = 'success') { $('toast-msg').innerText = msg; $('toast-icon').className = `w-8 h-8 rounded-full flex items-center justify-center text-sm ${type === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`; $('toast').classList.remove('hidden'); setTimeout(() => $('toast').classList.add('hidden'), 3000); }
-        function triggerWhatsApp(p, m) { const c = String(p).replace(/[^0-9]/g, ''); window.open(`https://wa.me/${c.startsWith('0')?'62'+c.substring(1):c}?text=${encodeURIComponent(m)}`, '_blank'); }
-        function toggleMobileMenu() { isMobileMenuOpen = !isMobileMenuOpen; $('mobile-nav-overlay').classList.toggle('invisible'); $('mobile-nav-overlay').classList.toggle('opacity-0'); $('mobile-nav-content').classList.toggle('-translate-x-full'); }
 
+        function closeDetail() { $('modal-detail').classList.add('hidden'); }
+        function closeNoteModal() { $('modal-note').classList.add('hidden'); }
+        function closeRequestModal() { $('modal-request').classList.add('hidden'); }
+        function showToast(msg, type = 'success') { $('toast-msg').innerText = msg; $('toast').classList.remove('hidden'); setTimeout(() => $('toast').classList.add('hidden'), 3000); }
+        function triggerWhatsApp(p, m) { if (!p) return; let c = String(p).replace(/[^0-9]/g, ''); if (c.startsWith('0')) c = '62' + c.substring(1); else if (c.startsWith('8')) c = '62' + c; window.open(`https://wa.me/${c}?text=${encodeURIComponent(m)}`, '_blank'); }
+        function formatDate(d) { if (!d) return "-"; const date = new Date(d); return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }); }
+        function toggleMobileMenu() { 
+    isMobileMenuOpen = !isMobileMenuOpen; 
+    const overlay = $('mobile-nav-overlay');
+    overlay.classList.toggle('invisible');
+    overlay.classList.toggle('opacity-0'); // Tambahkan baris ini
+    $('mobile-nav-content').classList.toggle('-translate-x-full'); 
+}
+        
         function showUserCard(id, type) {
             const user = type === 'staff' ? users.find(u => u.ID.toString() === id.toString()) : heads.find(h => h.ID.toString() === id.toString()); if (!user) return;
             $('card-name').innerText = user.Name; $('card-role').innerText = user.Position;
             $('card-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.Name)}&background=${type==='head'?'059669':'1e3a8a'}&color=fff&bold=true&size=128`;
-            const editBtn = $('card-edit-btn'); const dupBtn = $('card-duplicate-btn'); const delBtn = $('card-delete-btn');
-            const ne = editBtn.cloneNode(true); const nd = dupBtn.cloneNode(true); const nl = delBtn.cloneNode(true);
-            editBtn.parentNode.replaceChild(ne, editBtn); dupBtn.parentNode.replaceChild(nd, dupBtn); delBtn.parentNode.replaceChild(nl, delBtn);
+            const editBtn = $('card-edit-btn'); const delBtn = $('card-delete-btn');
+            const ne = editBtn.cloneNode(true); const nl = delBtn.cloneNode(true);
+            editBtn.parentNode.replaceChild(ne, editBtn); delBtn.parentNode.replaceChild(nl, delBtn);
             ne.onclick = () => { closeUserCard(); openEditModal(type, id); };
-            nd.onclick = () => { closeUserCard(); duplicateData(id, type); };
             nl.onclick = () => { closeUserCard(); type === 'staff' ? deleteUser(id) : deleteHead(id); };
             $('modal-user-card').classList.remove('hidden'); $('modal-user-card').classList.add('flex');
         }
         function closeUserCard() { $('modal-user-card').classList.add('hidden'); }
-        function duplicateData(id, type) { const s = type === 'staff' ? users.find(u => u.ID.toString() === id.toString()) : heads.find(h => h.ID.toString() === id.toString()); if (!s) return; openEditModal(type); setTimeout(() => { $('f-name').value = s.Name + " (Copy)"; $('f-division').value = s.Division; $('f-position').value = s.Position; $('f-email').value = "copy." + s.Email; $('f-phone').value = s.Phone; $('f-user').value = s.Username + "_copy"; $('f-pass').value = s.Password; if(type==='staff'){$('f-annual').value=s.AnnualQuota; $('f-special').value=s.SpecialQuota;} showToast('Data disalin ke form.', 'success'); }, 200); }
-
+        
         window.onload = async () => { $('current-date').innerText = formatDate(new Date()); await fetchFromSheet(); $('global-loader').classList.add('loader-hidden'); };
     </script>
 </body>
