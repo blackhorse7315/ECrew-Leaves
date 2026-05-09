@@ -593,10 +593,10 @@
             loadApprovalList(); 
             
             // 1. Simpan perubahan request ke Database (Google Sheet)
-            await callGAS('saveRequest', r);
+            const saveRes = await callGAS('saveRequest', r);
             
             // 2. Jika status FINAL (APPROVED), update kuota ke Database
-            if (r.Status === 'APPROVED') {
+            if (saveRes.status === 'success' && r.Status === 'APPROVED') {
                 const u = users.find(usr => usr.Name === r.Name);
                 if (u) {
                     const dur = parseInt(r.Duration) || 0;
@@ -606,11 +606,18 @@
                 }
             }
 
-            // 3. Sinkronisasi ulang dan refresh UI agar data tetap konsisten
-            await fetchFromSheet(); 
-            switchTab('approval');
+            // 3. Sinkronisasi ulang dengan jeda singkat untuk stabilitas data di Google Sheet
+            if (saveRes.status === 'success') {
+                setTimeout(async () => {
+                    await fetchFromSheet(); 
+                    switchTab('approval');
+                    showToast('Status Berhasil Diperbarui!');
+                }, 800);
+            } else {
+                showToast('Gagal menyimpan ke Database!', 'error');
+            }
             
-            // 4. Pengiriman WA dilakukan secara async "fire and forget" agar tidak menghambat sistem
+            // 4. Pengiriman WA dilakukan secara async
             setTimeout(() => {
                 if (isHeadDecision) {
                     const decisionText = isApproveAction ? '*MENYETUJUI*' : '*MENOLAK*';
