@@ -215,7 +215,7 @@
     <div id="toast" class="fixed bottom-8 right-8 z-[250] hidden animate-fade-in"><div class="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/10"><div id="toast-icon" class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm"><i class="fas fa-check"></i></div><p id="toast-msg" class="text-sm font-bold">Berhasil</p></div></div>
 
     <script>
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycby6emc8TevvAhAzCzt-aMq3pe2WP34VcLBUU5PQCLUNuHx_C3sB3esubXvyABixUeRk7A/exec";
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwCBvuRvUeZhRIEDmHgqiH5dW-_4F5XC_umkr7OQS7KRM79skZk2A8RfdZtXGA3zvJ5Uw/exec";
 
         const DIVISIONS = ["Operation", "Maintenance", "Safety", "Staf"];
         const POSITIONS = ["Director", "Safety, Quality & Security Manager", "General Manager", "Operation Manager", "Maintenance Manager", "Chief Pilot Fixed Wing", "Chief Pilot Rotary Wing", "Chief Flight Support", "Chief Engineer", "Chief Inspector", "Chief Finance, Accounting & Tax", "Human Resource Development", "Line Pilot", "Engineer", "Cabin Service", "Staf", "Flight Support", "Ground Support", "Finance", "Logistic", "Aviation Security", "Kurir", "Driver"];
@@ -583,9 +583,10 @@
             const isHeadDecision = currentUser.role === ROLES.HEAD;
             const isHRDDecision = currentUser.role === ROLES.HRD;
             
+            // Perbarui status utama
             r.Status = isApproveAction ? (isHeadDecision ? 'HRD_APPROVAL' : 'APPROVED') : 'REJECTED';
             
-            // SESUAI SCREENSHOT: Header adalah 'HeadNote' dan 'HRDNote' (Tanpa Spasi)
+            // SESUAI SCREENSHOT: Key harus 'HeadNote' dan 'HRDNote' (Tanpa Spasi)
             if (isHeadDecision) {
                 r.HeadNote = note;
             } else {
@@ -596,7 +597,6 @@
             
             closeNoteModal(); 
             showToast('Memproses & Menyimpan...', 'success'); 
-            loadApprovalList(); 
             
             // 1. Simpan perubahan request ke Database (Google Sheet)
             const saveRes = await callGAS('saveRequest', r);
