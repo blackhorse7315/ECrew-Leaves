@@ -588,19 +588,14 @@
             
             r.Start = toISODateString(r.Start); r.End = toISODateString(r.End); r.SubmitDate = toISODateString(r.SubmitDate || new Date());
             
-            closeNoteModal(); showToast('Memproses...', 'success'); loadApprovalList(); 
+            closeNoteModal(); 
+            showToast('Memproses & Menyimpan...', 'success'); 
+            loadApprovalList(); 
+            
+            // 1. Simpan perubahan request ke Database (Google Sheet)
             await callGAS('saveRequest', r);
             
-            // WHATSAPP
-            if (isHeadDecision) {
-                const decisionText = isApproveAction ? '*MENYETUJUI*' : '*MENOLAK*';
-                const hrdMsg = `*UPDATE PENGAJUAN CUTI*\n\nYth. HRD Transwisata,\n\nSaya telah ${decisionText} cuti dari *${r.Name}* (${r.Position}).\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Catatan: ${note || '-'}\n\nMohon diproses di sistem. Terima kasih.`;
-                if (hrdProfile.phone) triggerWhatsApp(hrdProfile.phone, hrdMsg);
-            } else if (isHRDDecision) {
-                const userMsg = `*UPDATE STATUS CUTI*\n\nYth. ${r.Name},\n\nPengajuan cuti Anda telah *DISETUJUI* oleh HRD Transwisata.\n\nTerima kasih.`;
-                if (r.Phone && isApproveAction) triggerWhatsApp(r.Phone, userMsg);
-            }
-            
+            // 2. Jika status FINAL (APPROVED), update kuota ke Database
             if (r.Status === 'APPROVED') {
                 const u = users.find(usr => usr.Name === r.Name);
                 if (u) {
@@ -610,7 +605,20 @@
                     u.ID = u.ID; await callGAS('saveUser', u);
                 }
             }
-            await fetchFromSheet(); switchTab('approval');
+
+            // 3. Sinkronisasi ulang dan refresh UI agar data tetap konsisten
+            await fetchFromSheet(); 
+            switchTab('approval');
+            
+            // 4. Baru kirim Notifikasi WhatsApp (Langkah terakhir, opsional bagi flow sistem)
+            if (isHeadDecision) {
+                const decisionText = isApproveAction ? '*MENYETUJUI*' : '*MENOLAK*';
+                const hrdMsg = `*UPDATE PENGAJUAN CUTI*\n\nYth. HRD Transwisata,\n\nSaya telah ${decisionText} cuti dari *${r.Name}* (${r.Position}).\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Catatan: ${note || '-'}\n\nMohon diproses di sistem. Terima kasih.`;
+                if (hrdProfile.phone) triggerWhatsApp(hrdProfile.phone, hrdMsg);
+            } else if (isHRDDecision && isApproveAction) {
+                const userMsg = `*UPDATE STATUS CUTI*\n\nYth. ${r.Name},\n\nPengajuan cuti Anda telah *DISETUJUI* oleh HRD Transwisata.\n\nTerima kasih.`;
+                if (r.Phone) triggerWhatsApp(r.Phone, userMsg);
+            }
         }
 
         async function cancelRequest(id) { 
