@@ -35,12 +35,13 @@
         @media print {
             @page {
                 size: A4;
-                margin: 10mm;
+                margin: 15mm;
             }
             body { background: white !important; font-size: 10pt !important; color: black !important; }
             #app-wrapper, #mobile-nav-overlay, #global-loader, .no-print, .modal-overlay, header { 
                 display: none !important; 
             }
+            /* Menghapus bingkai kotak/frame saat cetak */
             #modal-detail { 
                 display: block !important; 
                 position: static !important; 
@@ -51,6 +52,8 @@
                 overflow: visible !important;
                 padding: 0 !important;
                 margin: 0 !important;
+                background: white !important;
+                border-radius: 0 !important;
             }
             #print-area { 
                 display: block !important; 
@@ -58,13 +61,14 @@
                 margin: 0 !important;
                 border: none !important;
                 background: white !important;
+                overflow: visible !important;
             }
-            .print-table { border: 1.5px solid #000 !important; border-collapse: collapse !important; width: 100% !important; margin-bottom: 15px !important; }
-            .print-table td, .print-table th { border: 1px solid #000 !important; padding: 5px 8px !important; }
+            .print-table { border: 1.5px solid #000 !important; border-collapse: collapse !important; width: 100% !important; margin-bottom: 12px !important; }
+            .print-table td, .print-table th { border: 1px solid #000 !important; padding: 6px 10px !important; color: black !important; }
             .print-bg-header { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; }
-            .print-label { font-weight: bold !important; text-transform: uppercase !important; font-size: 7.5pt !important; color: #000 !important; }
-            .signature-area { page-break-inside: avoid; }
-            .print-content { padding-top: 5px !important; }
+            .print-label { font-weight: bold !important; text-transform: uppercase !important; font-size: 8pt !important; color: black !important; }
+            .signature-area { page-break-inside: avoid; margin-top: 30px !important; }
+            .print-content { padding-top: 0px !important; }
         }
     </style>
 </head>
@@ -194,7 +198,7 @@
                     </div>
                     <h2 class="text-xl font-black text-slate-900 uppercase mb-0 tracking-tight">Employee Leaves Form</h2>
                     <p class="text-xs font-bold text-slate-700 uppercase tracking-[0.2em]">Transwisata Prima Aviation</p>
-                    <div id="print-id-label" class="mt-2 text-[10pt] font-bold text-slate-500"></div>
+                    <div id="print-id-label" class="mt-2 text-[10pt] font-bold text-slate-600"></div>
                 </div>
                 
                 <div id="modal-body" class="print-content"></div>
@@ -738,7 +742,6 @@
             const headName = headObj ? headObj.Name : "________________";
             const headPosition = headObj ? headObj.Position : "Head of Department";
             
-            // Perbaikan error di sini: Pastikan print-id-label ada di HTML
             const printIdEl = $('print-id-label');
             if (printIdEl) printIdEl.innerText = 'Document ID: #' + r.ID;
 
@@ -797,7 +800,7 @@
                     </table>
 
                     <!-- SIGNATURE SECTION -->
-                    <div class="signature-area mt-4 grid grid-cols-2 gap-8 text-center">
+                    <div class="signature-area grid grid-cols-2 gap-8 text-center">
                         <div class="flex flex-col items-center">
                             <p class="text-[9pt] font-bold uppercase mb-16">Approved by,</p>
                             <div class="w-48 border-t border-black pt-1">
@@ -814,7 +817,7 @@
                         </div>
                     </div>
 
-                    <div class="mt-8 text-[7pt] text-slate-400 italic text-right">
+                    <div class="mt-6 text-[7pt] text-slate-400 italic text-right">
                         Printed automatically via ECrew Transwisata System on ${new Date().toLocaleString('id-ID')}
                     </div>
                 </div>`;
