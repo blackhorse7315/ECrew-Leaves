@@ -31,7 +31,7 @@
         #global-loader { transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, visibility 0.4s; visibility: visible; }
         .loader-hidden { transform: translateY(150px) !important; opacity: 0 !important; visibility: hidden !important; }
         
-        /* PRINT STYLES - PROFESSIONAL DOC A4 */
+        /* PRINT STYLES - PROFESSIONAL DOC A4 (NO FRAME) */
         @media print {
             @page {
                 size: A4;
@@ -53,12 +53,13 @@
                 margin: 0 !important;
                 background: white !important;
                 border-radius: 0 !important;
+                border: none !important; /* Hilangkan frame luar modal */
             }
             #print-area { 
                 display: block !important; 
                 padding: 0 !important;
                 margin: 0 !important;
-                border: none !important;
+                border: none !important; /* Pastikan tidak ada border pada area print */
                 background: white !important;
                 overflow: visible !important;
             }
@@ -192,7 +193,7 @@
         <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
             <div id="print-area" class="p-8 md:p-12 overflow-y-auto no-scrollbar flex-1 bg-white">
                 <!-- PRINT HEADER -->
-                <div class="text-center mb-6 pb-4 border-b-4 border-double border-slate-800 signature-area">
+                <div class="text-center mb-6 pb-4 border-b-4 border-double border-slate-900 signature-area">
                     <div class="h-16 flex justify-center mb-3">
                         <img src="https://lh3.googleusercontent.com/d/1WNcGjsZ9_Fp54xzOl01EYRqM6-wY5Zh7" alt="Logo" class="h-full object-contain" />
                     </div>
@@ -683,7 +684,6 @@
                 setTimeout(() => {
                     let waMessage = "";
                     if (isHeadDecision) {
-                        // 1. WhatsApp dari Head ke User
                         const decisionText = isApproveAction ? "*DISETUJUI*" : "*TIDAK DISETUJUI*";
                         waMessage = `*UPDATE STATUS CUTI*\n\nYth. ${userName},\n\nPengajuan cuti Anda tanggal ${formatDate(submitDate)} telah ${decisionText} oleh ${headPos}.\n\n*Detail Pengajuan:*\n- Tipe: ${leaveType}\n- Periode: ${formatDate(leaveStart)} s/d ${formatDate(leaveEnd)}\n- Durasi: ${leaveDur} Hari\n- Alasan: ${leaveReason}\n\n`;
                         
@@ -696,15 +696,12 @@
                         
                         if (userPhone) triggerWhatsApp(userPhone, waMessage);
 
-                        // 2. WhatsApp dari Head ke HRD (Hanya jika SETUJU)
                         if (isApproveAction && hrdProfile.phone) {
                             const hrdMsg = `*NOTIFIKASI PENGAJUAN CUTI*\n\nYth. HRD Transwisata,\n\nBerikut ini pengajuan cuti dari anggota kami atas nama *${userName}* (${userPos}) telah saya *SETUJUI*\n\n*Detail Pengajuan:*\n- Tipe: ${leaveType}\n- Periode: ${formatDate(leaveStart)} s/d ${formatDate(leaveEnd)}\n- Durasi: ${leaveDur} Hari\n- Alasan: ${leaveReason}\n\nMohon diproses lebih lanjut.\n\nSilakan login melalui portal *ECrew Transwisata* untuk akses *ECrew Leaves System* dan memproses pengajuan ini.\n\nTerima kasih.`;
-                            // Karena triggerWhatsApp mengganti window.location, kita beri delay kecil untuk pesan kedua atau arahkan user manual
                             setTimeout(() => triggerWhatsApp(hrdProfile.phone, hrdMsg), 2000);
                         }
 
                     } else if (currentUser.role === ROLES.HRD) {
-                        // 3. WhatsApp dari HRD ke User
                         const decisionText = isApproveAction ? "*DISETUJUI*" : "*TIDAK DISETUJUI*";
                         waMessage = `*UPDATE STATUS CUTI*\n\nYth. ${userName},\n\nPengajuan cuti Anda tanggal ${formatDate(submitDate)} telah ${decisionText} oleh HRD.\n\nSilakan cek detail di aplikasi.\n\nTerima kasih.`;
                         if (userPhone) triggerWhatsApp(userPhone, waMessage);
