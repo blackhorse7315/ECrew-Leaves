@@ -31,11 +31,11 @@
         #global-loader { transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, visibility 0.4s; visibility: visible; }
         .loader-hidden { transform: translateY(150px) !important; opacity: 0 !important; visibility: hidden !important; }
         
-        /* PRINT STYLES - PROFESSIONAL DOC A4 (NO FRAME) */
+        /* PRINT STYLES - TOTAL CLEANUP */
         @media print {
             @page {
                 size: A4;
-                margin: 15mm;
+                margin: 10mm;
             }
             body { background: white !important; font-size: 10pt !important; color: black !important; }
             #app-wrapper, #mobile-nav-overlay, #global-loader, .no-print, .modal-overlay, header { 
@@ -45,21 +45,31 @@
                 display: block !important; 
                 position: static !important; 
                 width: 100% !important; 
-                max-width: none !important;
-                height: auto !important;
-                box-shadow: none !important;
-                overflow: visible !important;
                 padding: 0 !important;
                 margin: 0 !important;
                 background: white !important;
+                border: none !important;
+            }
+            /* Target inner card div to strip shadows and rounding */
+            #modal-detail > div {
+                box-shadow: none !important;
                 border-radius: 0 !important;
-                border: none !important; /* Hilangkan frame luar modal */
+                border: none !important;
+                max-width: none !important;
+                max-height: none !important;
+                width: 100% !important;
+                height: auto !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                position: static !important;
+                background: white !important;
+                transform: none !important;
             }
             #print-area { 
                 display: block !important; 
-                padding: 0 !important;
+                padding: 5mm !important;
                 margin: 0 !important;
-                border: none !important; /* Pastikan tidak ada border pada area print */
+                border: none !important;
                 background: white !important;
                 overflow: visible !important;
             }
@@ -69,7 +79,7 @@
             .print-label { font-weight: bold !important; text-transform: uppercase !important; font-size: 8pt !important; color: black !important; }
             .signature-area { page-break-inside: avoid; margin-top: 20px !important; }
             .print-content { padding-top: 0px !important; }
-            .sign-img { max-height: 65px; max-width: 140px; object-fit: contain; margin: 0 auto; display: block; }
+            .sign-img { max-height: 70px; max-width: 150px; object-fit: contain; margin: 0 auto; display: block; }
         }
     </style>
 </head>
