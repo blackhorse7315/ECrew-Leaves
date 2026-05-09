@@ -610,15 +610,17 @@
             await fetchFromSheet(); 
             switchTab('approval');
             
-            // 4. Baru kirim Notifikasi WhatsApp (Langkah terakhir, opsional bagi flow sistem)
-            if (isHeadDecision) {
-                const decisionText = isApproveAction ? '*MENYETUJUI*' : '*MENOLAK*';
-                const hrdMsg = `*UPDATE PENGAJUAN CUTI*\n\nYth. HRD Transwisata,\n\nSaya telah ${decisionText} cuti dari *${r.Name}* (${r.Position}).\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Catatan: ${note || '-'}\n\nMohon diproses di sistem. Terima kasih.`;
-                if (hrdProfile.phone) triggerWhatsApp(hrdProfile.phone, hrdMsg);
-            } else if (isHRDDecision && isApproveAction) {
-                const userMsg = `*UPDATE STATUS CUTI*\n\nYth. ${r.Name},\n\nPengajuan cuti Anda telah *DISETUJUI* oleh HRD Transwisata.\n\nTerima kasih.`;
-                if (r.Phone) triggerWhatsApp(r.Phone, userMsg);
-            }
+            // 4. Pengiriman WA dilakukan secara async "fire and forget" agar tidak menghambat sistem
+            setTimeout(() => {
+                if (isHeadDecision) {
+                    const decisionText = isApproveAction ? '*MENYETUJUI*' : '*MENOLAK*';
+                    const hrdMsg = `*UPDATE PENGAJUAN CUTI*\n\nYth. HRD Transwisata,\n\nSaya telah ${decisionText} cuti dari *${r.Name}* (${r.Position}).\n- Tipe: ${r.Type}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Catatan: ${note || '-'}\n\nMohon diproses di sistem. Terima kasih.`;
+                    if (hrdProfile.phone) triggerWhatsApp(hrdProfile.phone, hrdMsg);
+                } else if (isHRDDecision && isApproveAction) {
+                    const userMsg = `*UPDATE STATUS CUTI*\n\nYth. ${r.Name},\n\nPengajuan cuti Anda telah *DISETUJUI* oleh HRD Transwisata.\n\nTerima kasih.`;
+                    if (r.Phone) triggerWhatsApp(r.Phone, userMsg);
+                }
+            }, 100);
         }
 
         async function cancelRequest(id) { 
@@ -731,7 +733,7 @@
         function closeNoteModal() { $('modal-note').classList.add('hidden'); }
         function closeRequestModal() { $('modal-request').classList.add('hidden'); }
         function showToast(msg, type = 'success') { $('toast-msg').innerText = msg; $('toast').classList.remove('hidden'); setTimeout(() => $('toast').classList.add('hidden'), 3000); }
-        function triggerWhatsApp(p, m) { if (!p) return; let c = String(p).replace(/[^0-9]/g, ''); if (c.startsWith('0')) c = '62' + c.substring(1); else if (c.startsWith('8')) c = '62' + c; window.open(`https://wa.me/${c}?text=${encodeURIComponent(m)}`, '_blank'); }
+        function triggerWhatsApp(p, m) { if (!p) return; let c = String(p).replace(/[^0-9]/g, ''); if (c.startsWith('0')) c = '62' + c.substring(1); else if (c.startsWith('8')) c = '62' + c; window.location.href = `whatsapp://send?phone=${c}&text=${encodeURIComponent(m)}`; }
         function formatDate(d) { if (!d) return "-"; const date = new Date(d); return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }); }
         function toggleMobileMenu() { 
     isMobileMenuOpen = !isMobileMenuOpen; 
