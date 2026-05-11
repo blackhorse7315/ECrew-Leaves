@@ -650,11 +650,11 @@
                 // WhatsApp Logic
                 let waMessage = "";
                 if (isHeadDecision) {
-                    const decisionText = isApproveAction ? "*DISETUJUI*" : "*TIDAK DISETUJUI*";
-                    waMessage = `*UPDATE STATUS CUTI*\n\nYth. ${userName},\n\nPengajuan cuti Anda tanggal ${formatDate(submitDateRaw)} telah ${decisionText} oleh ${headPos}.\n\n*Detail Pengajuan:*\n- Tipe: ${leaveType}\n- Periode: ${formatDate(leaveStart)} s/d ${formatDate(leaveEnd)}\n- Durasi: ${leaveDur} Hari\n- Alasan: ${leaveReason}\n\n`;
-                    if (isApproveAction) { waMessage += `Silakan cek detail di aplikasi.`; } 
-                    else { waMessage += `Silakan cek detail di aplikasi atau langsung menghubungi ${headPos}.`; }
-                    waMessage += `\n\nTerima kasih.`;
+                    if (isApproveAction) {
+                        waMessage = `*UPDATE STATUS CUTI*\n\nYth. ${userName},\n\nPengajuan cuti Anda tanggal ${formatDate(submitDateRaw)} telah *DISETUJUI* oleh ${headPos}.\n\n*Detail Pengajuan:*\n- Tipe: ${leaveType}\n- Periode: ${formatDate(leaveStart)} s/d ${formatDate(leaveEnd)}\n- Durasi: ${leaveDur} Hari\n- Alasan: ${leaveReason}\n\nSilakan cek detail di aplikasi.\n\nTerima kasih.`;
+                    } else {
+                        waMessage = `*UPDATE STATUS CUTI*\n\nYth. ${userName},\n\nPengajuan cuti Anda tanggal ${formatDate(submitDateRaw)} *TIDAK DISETUJUI* oleh ${headPos}.\n\n*Detail Pengajuan:*\n- Tipe: ${leaveType}\n- Periode: ${formatDate(leaveStart)} s/d ${formatDate(leaveEnd)}\n- Durasi: ${leaveDur} Hari\n- Alasan: ${leaveReason}\n\nSilakan cek detail di aplikasi atau langsung menghubungi ${headPos}.\n\nTerima kasih.`;
+                    }
                     
                     if (userPhone) triggerWhatsApp(userPhone, waMessage);
 
@@ -663,8 +663,11 @@
                         setTimeout(() => triggerWhatsApp(hrdProfile.phone, hrdMsg), 2500);
                     }
                 } else if (currentUser.role === ROLES.HRD) {
-                    const decisionText = isApproveAction ? "*DISETUJUI*" : "*TIDAK DISETUJUI*";
-                    waMessage = `*UPDATE STATUS CUTI*\n\nYth. ${userName},\n\nPengajuan cuti Anda tanggal ${formatDate(submitDateRaw)} telah ${decisionText} oleh HRD.\n\nSilakan cek detail di aplikasi.\n\nTerima kasih.`;
+                    if (isApproveAction) {
+                        waMessage = `*UPDATE STATUS CUTI*\n\nYth. ${userName},\n\nPengajuan cuti Anda tanggal ${formatDate(submitDateRaw)} telah *DISETUJUI* oleh HRD.\n\nSilakan cek detail di aplikasi.\n\nTerima kasih.`;
+                    } else {
+                        waMessage = `*UPDATE STATUS CUTI*\n\nYth. ${userName},\n\nPengajuan cuti Anda tanggal ${formatDate(submitDateRaw)} *TIDAK DISETUJUI* oleh HRD.\n\nSilakan cek detail di aplikasi.\n\nTerima kasih.`;
+                    }
                     if (userPhone) triggerWhatsApp(userPhone, waMessage);
                 }
 
