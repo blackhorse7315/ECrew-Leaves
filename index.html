@@ -684,19 +684,20 @@
         function loadHistory() {
             let data = [...leaveRequests]; if (currentUser.role === ROLES.STAFF) data = data.filter(r => getValueCaseInsensitive(r, 'name') === currentUser.name);
             const grouped = data.reduce((acc, r) => {
-                const dStr = getValueCaseInsensitive(r, 'start') || getValueCaseInsensitive(r, 'Start');
-                const d = new Date(dStr); if (isNaN(d.getTime())) return acc;
-                const monthYear = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-                if (!acc[monthYear]) acc[monthYear] = []; acc[monthYear].push(r); return acc;
+                const submitRaw = getValueCaseInsensitive(r, 'SubmitDate') || getValueCaseInsensitive(r, 'Date Submission') || getValueCaseInsensitive(r, 'Tanggal Pengajuan') || getValueCaseInsensitive(r, 'start');
+                const d = new Date(submitRaw); if (isNaN(d.getTime())) return acc;
+                const y = d.getFullYear(); const m = String(d.getMonth() + 1).padStart(2, '0'); const day = String(d.getDate()).padStart(2, '0');
+                const dateKey = `${y}-${m}-${day}`;
+                if (!acc[dateKey]) acc[dateKey] = []; acc[dateKey].push(r); return acc;
             }, {});
-            const sortedKeys = Object.keys(grouped).sort((a, b) => new Date(b.split(' ').reverse().join(' ')) - new Date(a.split(' ').reverse().join(' ')));
+            const sortedKeys = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
             let historyHTML = `<div class="animate-fade-in space-y-8"><h3 class="font-black uppercase text-slate-800 tracking-tight">Riwayat</h3>`;
             if (sortedKeys.length === 0) historyHTML += `<p class="text-slate-400 italic py-20 text-center glass-card rounded-[2rem]">Belum ada riwayat.</p>`;
             else {
                 sortedKeys.forEach(key => {
                     historyHTML += `
                     <div>
-                        <h4 class="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">${key}</h4>
+                        <h4 class="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">TANGGAL PENGAJUAN: ${formatDate(key)}</h4>
                         
                         <!-- Tampilan Desktop (Tabel) -->
                         <div class="hidden md:block glass-card rounded-[2rem] overflow-hidden">
