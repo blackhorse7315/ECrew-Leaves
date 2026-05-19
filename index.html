@@ -178,7 +178,7 @@
 
     <div id="modal-request" class="fixed inset-0 z-[150] modal-overlay hidden items-center justify-center p-4">
         <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
-            <div class="aviation-gradient p-6 md:p-8 text-white shrink-0"><div class="flex justify-between items-center"><h3 class="text-lg md:text-2xl font-black">Pengajuan Cuti</h3><button onclick="closeRequestModal()" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center"><i class="fas fa-times"></i></button></div></div>
+            <div class="aviation-gradient p-6 md:p-8 text-white shrink-0"><div class="flex justify-between items-center"><h3 id="request-modal-title" class="text-lg md:text-2xl font-black">Pengajuan Cuti</h3><button onclick="closeRequestModal()" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center"><i class="fas fa-times"></i></button></div></div>
             <form id="leave-request-form" class="p-6 md:p-10 space-y-6 bg-white overflow-y-auto no-scrollbar flex-1">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     <div class="space-y-1"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Divisi</label><input type="text" id="r-division" readonly class="w-full px-4 py-3 rounded-2xl border bg-slate-100 font-semibold text-sm"></div>
@@ -240,6 +240,7 @@
         let editingUserId = null; 
         let editingHeadId = null; 
         let currentEditType = 'staff';
+        let editingRequestId = null;
         let pendingApprovalId = null; let isApproveAction = true; let isMobileMenuOpen = false; let isSyncing = false;
         const $ = (id) => document.getElementById(id);
 
@@ -250,6 +251,7 @@
             return (typeof val === 'string') ? val.trim().replace(/"/g, '"') : val;
         }
 
+        // TWA Drive Direct Link converter helper
         function convertToDirectLink(url) {
             if (!url) return '';
             const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
@@ -388,6 +390,43 @@
 
         function handleDateChange() { onLeaveTypeChange(); }
 
+        function filterEmployeeTable(query) {
+            const q = query.toLowerCase().trim();
+            const rows = document.querySelectorAll('#employee-table-body tr');
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                if (text.includes(q)) {
+                    row.classList.remove('hidden');
+                } else {
+                    row.classList.add('hidden');
+                }
+            });
+        }
+
+        async function cancelLeave(id) {
+            if (!confirm("Apakah Anda yakin ingin membatalkan pengajuan cuti ini?")) return;
+            const r = leaveRequests.find(req => getValueCaseInsensitive(req, 'id').toString() === id.toString());
+            if (!r) return;
+            
+            r.Status = 'CANCELLED';
+            r.ID = getValueCaseInsensitive(r, 'id');
+            r.Start = toISODateString(getValueCaseInsensitive(r, 'Start'));
+            r.End = toISODateString(getValueCaseInsensitive(r, 'End'));
+            r.SubmitDate = toISODateString(getValueCaseInsensitive(r, 'SubmitDate'));
+
+            showToast('Membatalkan Pengajuan...');
+            const res = await callGAS('saveRequest', r);
+            if (res.status === 'success') {
+                showToast('Pengajuan Cuti Berhasil Dibatalkan!');
+                setTimeout(async () => {
+                    await fetchFromSheet();
+                    loadHistory();
+                }, 800);
+            } else {
+                showToast('Gagal membatalkan pengajuan.', 'error');
+            }
+        }
+
         function loadEmployeeManagerUI() {
             $('main-content').innerHTML = `
                 <div class="animate-fade-in space-y-8">
@@ -400,10 +439,53 @@
                         <textarea id="e-bulk-input" rows="2" placeholder="Input data..." class="w-full px-5 py-4 rounded-3xl border border-blue-200 outline-none text-sm mb-4"></textarea>
                         <button onclick="handleBulkParse()" class="w-full py-3 bg-blue-900 text-white rounded-2xl font-black uppercase text-xs">Proses Bulk</button>
                     </div>
-                    <div class="glass-card rounded-[2rem] overflow-x-auto shadow-sm">
-                        <table class="w-full text-left min-w-[800px]"><thead class="bg-slate-50 text-[10px] font-black uppercase border-b"><tr><th class="px-8 py-5">Karyawan</th><th class="px-6 py-5">Jabatan</th><th class="px-6 py-5 text-center">Annual Balance</th><th class="px-6 py-5 text-center">Special Balance</th><th class="px-8 py-5 text-right">Info</th></tr></thead>
-                        <tbody class="divide-y divide-slate-50">${users.map(u => {
-                            return `<tr onclick="showUserCard('${getValueCaseInsensitive(u, 'id')}', 'staff')" class="hover:bg-slate-50 cursor-pointer transition-all group"><td class="px-8 py-5"><p class="text-xs font-black group-hover:text-blue-600 transition-colors">${getValueCaseInsensitive(u, 'name')}</p><p class="text-[10px] text-slate-400">${getValueCaseInsensitive(u, 'email')}</p></td><td class="px-6 py-5"><p class="text-[10px] md:text-xs font-bold text-slate-600">${getValueCaseInsensitive(u, 'division')}</p><p class="text-[9px] text-slate-400">${getValueCaseInsensitive(u, 'position')}</p></td><td class="px-6 py-5 text-center"><span class="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 font-black text-xs">${parseInt(getValueCaseInsensitive(u, 'AnnualQuota'))||0}</span></td><td class="px-6 py-5 text-center"><span class="px-3 py-1 rounded-lg bg-purple-50 text-purple-700 font-black text-xs">${parseInt(getValueCaseInsensitive(u, 'SpecialQuota'))||0}</span></td><td class="px-8 py-5 text-right text-slate-300"><i class="fas fa-chevron-right text-xs"></i></td></tr>`}).join('')}</tbody></table>
+                    
+                    <div class="space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <h4 class="text-sm font-black text-slate-700 uppercase tracking-wider">Daftar Karyawan</h4>
+                            <div class="relative w-full sm:w-80">
+                                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input type="text" id="employee-search" oninput="filterEmployeeTable(this.value)" placeholder="Cari nama, divisi, jabatan, email..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-4 focus:ring-blue-100 transition-all font-semibold text-xs text-slate-700">
+                            </div>
+                        </div>
+                        
+                        <div class="glass-card rounded-[2rem] overflow-x-auto shadow-sm">
+                            <table class="w-full text-left min-w-[800px]">
+                                <thead class="bg-slate-50 text-[10px] font-black uppercase border-b">
+                                    <tr>
+                                        <th class="px-8 py-5">Karyawan</th>
+                                        <th class="px-6 py-5">Jabatan</th>
+                                        <th class="px-6 py-5 text-center">Annual Balance</th>
+                                        <th class="px-6 py-5 text-center">Special Balance</th>
+                                        <th class="px-8 py-5 text-right">Info</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="employee-table-body" class="divide-y divide-slate-50">
+                                    ${users.map(u => {
+                                        return `
+                                        <tr onclick="showUserCard('${getValueCaseInsensitive(u, 'id')}', 'staff')" class="hover:bg-slate-50 cursor-pointer transition-all group">
+                                            <td class="px-8 py-5">
+                                                <p class="text-xs font-black group-hover:text-blue-600 transition-colors">${getValueCaseInsensitive(u, 'name')}</p>
+                                                <p class="text-[10px] text-slate-400">${getValueCaseInsensitive(u, 'email')}</p>
+                                            </td>
+                                            <td class="px-6 py-5">
+                                                <p class="text-[10px] md:text-xs font-bold text-slate-600">${getValueCaseInsensitive(u, 'division')}</p>
+                                                <p class="text-[9px] text-slate-400">${getValueCaseInsensitive(u, 'position')}</p>
+                                            </td>
+                                            <td class="px-6 py-5 text-center">
+                                                <span class="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 font-black text-xs">${parseInt(getValueCaseInsensitive(u, 'AnnualQuota'))||0}</span>
+                                            </td>
+                                            <td class="px-6 py-5 text-center">
+                                                <span class="px-3 py-1 rounded-lg bg-purple-50 text-purple-700 font-black text-xs">${parseInt(getValueCaseInsensitive(u, 'SpecialQuota'))||0}</span>
+                                            </td>
+                                            <td class="px-8 py-5 text-right text-slate-300">
+                                                <i class="fas fa-chevron-right text-xs"></i>
+                                            </td>
+                                        </tr>`
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>`;
         }
@@ -484,8 +566,9 @@
             if (u === 'HRD' && p === 'TWA119-021') { loginAs(ROLES.HRD, 'HR Department'); return; }
             const hMatch = heads.find(h => getValueCaseInsensitive(h, 'Username') === u && getValueCaseInsensitive(h, 'Password') === p); 
             if (hMatch) { loginAs(ROLES.HEAD, getValueCaseInsensitive(hMatch, 'Name'), hMatch); return; }
-            const uMatch = users.find(usr => getValueCaseInsensitive(usr, 'Username') === u && getValueCaseInsensitive(usr, 'Password') === p); 
-            if (uMatch) loginAs(ROLES.STAFF, getValueCaseInsensitive(uMatch, 'Name'), uMatch); else showToast('Gagal Login!', 'error');
+            const uMatch = users.find(usr => getValueCaseInsensitive(usr, 'Username') === usr && getValueCaseInsensitive(usr, 'Password') === p); 
+            const exactMatch = users.find(usr => getValueCaseInsensitive(usr, 'Username') === u && getValueCaseInsensitive(usr, 'Password') === p); 
+            if (exactMatch) loginAs(ROLES.STAFF, getValueCaseInsensitive(exactMatch, 'Name'), exactMatch); else showToast('Gagal Login!', 'error');
         });
 
         function loginAs(role, name, data = null) {
@@ -555,6 +638,8 @@
                                 <tbody class="divide-y divide-slate-50">
                                     ${grouped[key].map(r => {
                                         const id = getValueCaseInsensitive(r, 'id'), name = getValueCaseInsensitive(r, 'name'), pos = getValueCaseInsensitive(r, 'position'), start = getValueCaseInsensitive(r, 'start'), status = getValueCaseInsensitive(r, 'status');
+                                        const isPending = (status === 'HEAD_DEPT_REVIEW');
+                                        const showStaffActions = (currentUser.role === ROLES.STAFF && isPending);
                                         return `
                                         <tr>
                                             <td class="px-8 py-5">
@@ -566,6 +651,10 @@
                                                 <span class="px-3 py-1 rounded-full text-[8px] font-black uppercase ${status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}">${status}</span>
                                             </td>
                                             <td class="px-8 py-5 text-right flex gap-3 justify-end items-center">
+                                                ${showStaffActions ? `
+                                                    <button onclick="openRequestModal('${id}')" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-xl font-bold text-xs flex items-center gap-1 transition-colors" title="Edit Pengajuan"><i class="fas fa-edit"></i> Edit</button>
+                                                    <button onclick="cancelLeave('${id}')" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-500 rounded-xl font-bold text-xs flex items-center gap-1 transition-colors" title="Batalkan Pengajuan"><i class="fas fa-times-circle"></i> Batal</button>
+                                                ` : ''}
                                                 ${currentUser.role === ROLES.HRD ? `<button onclick="deleteRequest('${id}')" class="text-red-500 hover:text-red-700 transition-colors"><i class="fas fa-trash-alt"></i></button>` : ''}
                                                 <button onclick="showDetail('${id}')" class="text-blue-600 hover:text-blue-800 transition-colors"><i class="fas fa-eye"></i></button>
                                             </td>
@@ -579,6 +668,8 @@
                         <div class="block md:hidden space-y-3">
                             ${grouped[key].map(r => {
                                 const id = getValueCaseInsensitive(r, 'id'), name = getValueCaseInsensitive(r, 'name'), pos = getValueCaseInsensitive(r, 'position'), start = getValueCaseInsensitive(r, 'start'), status = getValueCaseInsensitive(r, 'status');
+                                const isPending = (status === 'HEAD_DEPT_REVIEW');
+                                const showStaffActions = (currentUser.role === ROLES.STAFF && isPending);
                                 return `
                                 <div class="glass-card p-5 rounded-3xl border border-slate-100 space-y-4 shadow-sm">
                                     <div class="flex justify-between items-start gap-2">
@@ -588,11 +679,19 @@
                                         </div>
                                         <span class="shrink-0 px-2.5 py-1 rounded-full text-[8px] font-black uppercase ${status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}">${status}</span>
                                     </div>
-                                    <div class="flex justify-between items-center pt-3 border-t border-slate-100/60 gap-4">
+                                    <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center pt-3 border-t border-slate-100/60 gap-4">
                                         <div class="text-[10px] font-bold text-slate-500 flex items-center gap-1.5">
                                             <i class="far fa-calendar-alt text-blue-500 text-xs"></i> ${formatDate(start)}
                                         </div>
-                                        <div class="flex gap-2 shrink-0">
+                                        <div class="flex flex-wrap gap-2 justify-end">
+                                            ${showStaffActions ? `
+                                                <button onclick="openRequestModal('${id}')" class="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-xl font-bold text-[10px] uppercase flex items-center gap-1 transition-all">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </button>
+                                                <button onclick="cancelLeave('${id}')" class="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-[10px] uppercase flex items-center gap-1 transition-all">
+                                                    <i class="fas fa-times-circle"></i> Batal
+                                                </button>
+                                            ` : ''}
                                             ${currentUser.role === ROLES.HRD ? `
                                             <button onclick="deleteRequest('${id}')" class="w-8 h-8 rounded-xl bg-red-50 hover:bg-red-100 text-red-500 flex items-center justify-center transition-colors" title="Hapus">
                                                 <i class="fas fa-trash-alt text-xs"></i>
@@ -730,13 +829,53 @@
             });
         }
 
-        function openRequestModal() {
+        function openRequestModal(id = null) {
+            editingRequestId = id;
+            
+            // Inisialisasi daftar Head Dept dropdown
             const h = $('r-target-head'); h.innerHTML = '<option value="">Pilih Head Dept</option>';
             heads.forEach(head => h.innerHTML += `<option value="${getValueCaseInsensitive(head, 'id')}">${getValueCaseInsensitive(head, 'position')} - ${getValueCaseInsensitive(head, 'name')}</option>`);
-            $('r-division').value = getValueCaseInsensitive(currentUser.data, 'division') || '-'; $('r-position').value = getValueCaseInsensitive(currentUser.data, 'position') || '-';
+            
+            // Inisialisasi daftar Delegasi Tugas (Rekan kerja)
             const hand = $('r-handover'); hand.innerHTML = '<option value="">Pilih Rekan</option>';
             users.forEach(u => { if(getValueCaseInsensitive(u, 'name') !== currentUser.name) hand.innerHTML += `<option value="${getValueCaseInsensitive(u, 'name')}">${getValueCaseInsensitive(u, 'name')}</option>`; });
-            $('modal-request').classList.remove('hidden'); $('modal-request').classList.add('flex');
+            
+            $('r-division').value = getValueCaseInsensitive(currentUser.data, 'division') || '-'; 
+            $('r-position').value = getValueCaseInsensitive(currentUser.data, 'position') || '-';
+
+            const submitBtn = $('r-submit-btn');
+
+            if (id) {
+                // Modifikasi judul dan isi modal untuk kebutuhan EDIT
+                $('request-modal-title').innerText = "Edit Pengajuan Cuti";
+                const r = leaveRequests.find(req => getValueCaseInsensitive(req, 'id').toString() === id.toString());
+                if (r) {
+                    $('r-target-head').value = getValueCaseInsensitive(r, 'TargetHeadId');
+                    $('r-type').value = getValueCaseInsensitive(r, 'Type');
+                    onLeaveTypeChange();
+                    $('r-start').value = toISODateString(getValueCaseInsensitive(r, 'Start'));
+                    $('r-end').value = toISODateString(getValueCaseInsensitive(r, 'End'));
+                    $('r-reason').value = getValueCaseInsensitive(r, 'Reason');
+                    $('r-handover').value = getValueCaseInsensitive(r, 'Handover');
+                    updateDur();
+                    submitBtn.innerText = "Simpan Perubahan";
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('opacity-50');
+                }
+            } else {
+                // Reset form untuk kebutuhan pengajuan BARU
+                $('request-modal-title').innerText = "Pengajuan Cuti";
+                $('leave-request-form').reset();
+                onLeaveTypeChange();
+                $('r-duration-view').innerText = "0 Hari";
+                $('r-quota-warning').classList.add('hidden');
+                submitBtn.innerText = "Kirim Pengajuan";
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50');
+            }
+
+            $('modal-request').classList.remove('hidden'); 
+            $('modal-request').classList.add('flex');
         }
 
         function onLeaveTypeChange() {
@@ -759,22 +898,42 @@
         }
 
         $('leave-request-form').addEventListener('submit', async (e) => {
-            e.preventDefault(); const headId = $('r-target-head').value; const headObj = heads.find(h => getValueCaseInsensitive(h, 'id').toString() === headId.toString());
-            const submitDateStr = toISODateString(new Date());
+            e.preventDefault(); 
+            const headId = $('r-target-head').value; 
+            const headObj = heads.find(h => getValueCaseInsensitive(h, 'id').toString() === headId.toString());
+            
+            const originalReq = editingRequestId ? leaveRequests.find(req => getValueCaseInsensitive(req, 'id').toString() === editingRequestId.toString()) : null;
+            const submitDateStr = originalReq ? toISODateString(getValueCaseInsensitive(originalReq, 'SubmitDate')) : toISODateString(new Date());
+            const idToUse = editingRequestId || ('TWA-' + Date.now());
+
             const p = { 
-                ID: 'TWA-' + Date.now(), Name: currentUser.name, Division: getValueCaseInsensitive(currentUser.data, 'division'), 
-                Position: getValueCaseInsensitive(currentUser.data, 'position'), TargetHeadId: headId, Type: $('r-type').value, 
-                Start: $('r-start').value, End: $('r-end').value, Duration: parseInt($('r-duration-view').innerText), 
-                Reason: $('r-reason').value, Handover: $('r-handover').value, Phone: getValueCaseInsensitive(currentUser.data, 'phone'), 
-                Status: 'HEAD_DEPT_REVIEW', SubmitDate: submitDateStr
+                ID: idToUse, 
+                Name: currentUser.name, 
+                Division: getValueCaseInsensitive(currentUser.data, 'division'), 
+                Position: getValueCaseInsensitive(currentUser.data, 'position'), 
+                TargetHeadId: headId, 
+                Type: $('r-type').value, 
+                Start: $('r-start').value, 
+                End: $('r-end').value, 
+                Duration: parseInt($('r-duration-view').innerText), 
+                Reason: $('r-reason').value, 
+                Handover: $('r-handover').value, 
+                Phone: getValueCaseInsensitive(currentUser.data, 'phone'), 
+                Status: 'HEAD_DEPT_REVIEW', // Reset status kembali ke review ketika diedit
+                SubmitDate: submitDateStr
             };
-            showToast('Mengirim...'); const res = await callGAS('saveRequest', p);
+            p.id = p.ID;
+
+            showToast(editingRequestId ? 'Menyimpan Perubahan...' : 'Mengirim...'); 
+            const res = await callGAS('saveRequest', p);
             if (res.status === 'success') {
                 if (headObj && getValueCaseInsensitive(headObj, 'Phone')) {
-                    const waMsg = `*PENGAJUAN CUTI BARU*\n\nYth. ${getValueCaseInsensitive(headObj, 'Name')},\n\nMohon ijin dengan ini saya mengajukan cuti dengan detail nama *${currentUser.name}* (${getValueCaseInsensitive(currentUser.data, 'position')}).\n\n*Detail Pengajuan:*\n- Tipe: ${p.Type}\n- Periode: ${formatDate(p.Start)} s/d ${formatDate(p.End)}\n- Durasi: ${p.Duration} Hari\n- Alasan: ${p.Reason}\n\nMohon untuk dapat memproses melalui aplikasi *ECrew Leaves System*.\n\nTerima kasih.`;
+                    const statusText = editingRequestId ? "PERUBAHAN" : "BARU";
+                    const waMsg = `*PENGAJUAN CUTI ${statusText}*\n\nYth. ${getValueCaseInsensitive(headObj, 'Name')},\n\nMohon ijin dengan ini saya mengajukan cuti dengan detail nama *${currentUser.name}* (${getValueCaseInsensitive(currentUser.data, 'position')}).\n\n*Detail Pengajuan:*\n- Tipe: ${p.Type}\n- Periode: ${formatDate(p.Start)} s/d ${formatDate(p.End)}\n- Durasi: ${p.Duration} Hari\n- Alasan: ${p.Reason}\n\nMohon untuk dapat memproses melalui aplikasi *ECrew Leaves System*.\n\nTerima kasih.`;
                     triggerWhatsApp(getValueCaseInsensitive(headObj, 'Phone'), waMsg);
                 }
-                closeRequestModal(); setTimeout(async () => { await fetchFromSheet(); switchTab('dashboard'); }, 1500);
+                closeRequestModal(); 
+                setTimeout(async () => { await fetchFromSheet(); switchTab('dashboard'); }, 1500);
             }
         });
 
@@ -788,7 +947,7 @@
             const headNote = getValueCaseInsensitive(r, 'HeadNote');
             const hrdNote = getValueCaseInsensitive(r, 'HRDNote');
             
-            // Aturan Kondisional Tanda Tangan
+            // Aturan Kondisi Tanda Tangan
             const showHeadSign = (st !== 'HEAD_DEPT_REVIEW' && headSign);
             const showHRDSign = ((st === 'APPROVED' || (st === 'REJECTED' && hrdNote !== '' && hrdNote !== '-')) && hrdSign);
 
