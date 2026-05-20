@@ -1079,9 +1079,22 @@
         function closeUserCard() { $('modal-user-card').classList.add('hidden'); $('modal-user-card').classList.remove('flex'); }
 
         function triggerWhatsApp(p, m) { 
-            if (!p) return; let c = String(p).replace(/[^0-9]/g, ''); 
-            if (c.startsWith('0')) c = '62' + c.substring(1); else if (c.startsWith('8')) c = '62' + c; 
-            const url = `https://wa.me/${c}?text=${encodeURIComponent(m)}`; window.open(url, '_blank');
+            if (!p) return; 
+            let c = String(p).replace(/[^0-9]/g, ''); 
+            if (c.startsWith('0')) c = '62' + c.substring(1); 
+            else if (c.startsWith('8')) c = '62' + c; 
+            
+            const urlPesan = encodeURIComponent(m);
+            const waAppUrl = `whatsapp://send?phone=${c}&text=${urlPesan}`;
+            const waWebUrl = `https://wa.me/${c}?text=${urlPesan}`;
+
+            // Coba buka aplikasi native WhatsApp terlebih dahulu
+            window.location.href = waAppUrl;
+
+            // Fallback ke WhatsApp Web jika aplikasi tidak merespon/tidak ada
+            setTimeout(() => {
+                window.open(waWebUrl, '_blank');
+            }, 2000);
         }
         
         window.onload = async () => { $('current-date').innerText = formatDate(new Date()); setTimeout(async () => { await fetchFromSheet(); $('global-loader').classList.add('loader-hidden'); }, 500); };
