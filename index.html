@@ -224,7 +224,8 @@
     <div id="toast" class="fixed bottom-8 right-8 z-[250] hidden animate-fade-in"><div class="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/10"><div id="toast-icon" class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm"><i class="fas fa-check"></i></div><p id="toast-msg" class="text-sm font-bold">Berhasil</p></div></div>
 
     <script>
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwAiOa48ny5YJYT1-awgBsyIAhrfTZdLEJQSJJ3GozOUBpb8D8E0rrPHSfhTMCqvJ_gTA/exec";
+        // Data source: Cloud Firestore (project cuti-apps-twa).
+        // Firebase is loaded in the ES module below and exposed via window.twaFirebase.
 
         const DIVISIONS = ["Operation", "Maintenance", "Safety", "Staf"];
         const POSITIONS = ["Director", "Safety, Quality & Security Manager", "General Manager", "Operation Manager", "Maintenance Manager", "Chief Pilot Fixed Wing", "Chief Pilot Rotary Wing", "Chief Flight Support", "Chief Engineer", "Chief Inspector", "Chief Finance, Accounting & Tax", "Human Resource Development", "Line Pilot", "Engineer", "Cabin Service", "Staf", "Flight Support", "Ground Support", "Finance", "Logistic", "Aviation Security", "Kurir", "Driver"];
@@ -312,31 +313,44 @@
             } catch (e) { return val; }
         }
 
+        // Firebase ES modules are deferred. The classic script may run first,
+        // so create the readiness promise before any window.onload handler fires.
+        window.twaFirebaseReady = new Promise((resolve, reject) => {
+            window.twaFirebaseResolve = resolve;
+            window.twaFirebaseReject = reject;
+        });
+        async function waitForFirebase() {
+            const timeout = new Promise((_, reject) => setTimeout(
+                () => reject(new Error('Modul Firebase tidak berhasil dimuat. Periksa jaringan, hosting HTTPS dan Console browser.')), 20000
+            ));
+            const adapter = await Promise.race([window.twaFirebaseReady, timeout]);
+            if (!adapter || typeof adapter.fetchAll !== 'function' || typeof adapter.execute !== 'function') {
+                throw new Error('Modul database Firebase belum siap. Refresh halaman dan periksa Console.');
+            }
+            return adapter;
+        }
+
         async function fetchFromSheet() {
             try {
-                const res = await fetch(GAS_API_URL, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: 'fetchAll' }),
-                    cache: 'no-cache', redirect: 'follow', credentials: 'omit'
-                });
-                if (!res.ok) throw new Error('Koneksi database gagal');
-                const result = await res.json();
-                if (result.status === 'success') {
-                    users = result.data.users || []; heads = result.data.heads || []; leaveRequests = result.data.requests || [];
-                    if(result.data.profile) {
-                        result.data.profile.forEach(p => {
-                            const key = p.Key || p.key; if(key) hrdProfile[key] = p.Value || p.value;
-                        });
-                    }
-                    if (currentUser && currentUser.data) {
-                        const updated = users.find(u => getValueCaseInsensitive(u, 'id').toString() === getValueCaseInsensitive(currentUser.data, 'id').toString());
-                        if (updated) currentUser.data = updated;
-                    }
-                    await checkAndResetAnnualQuotas(); return true;
+                const firebase = await waitForFirebase();
+                const result = await firebase.fetchAll();
+                users = result.users;
+                heads = result.heads;
+                leaveRequests = result.requests;
+                if (result.profile) hrdProfile = { ...hrdProfile, ...result.profile };
+                if (currentUser && currentUser.data) {
+                    const collection = currentUser.role === ROLES.HEAD ? heads : users;
+                    const updated = collection.find(u => String(getValueCaseInsensitive(u, 'id')) === String(getValueCaseInsensitive(currentUser.data, 'id')));
+                    if (updated) currentUser.data = updated;
                 }
-            } catch (err) { console.error('Fetch error:', err); } 
-            return false;
+                await checkAndResetAnnualQuotas();
+                return true;
+            } catch (err) {
+                console.error('Firestore fetch error:', err);
+                $('sync-status-text').innerText = 'Firebase gagal: ' + (err.code || err.message || err);
+                showToast('Gagal terhubung ke Firebase', 'error');
+                return false;
+            }
         }
 
         async function checkAndResetAnnualQuotas() {
@@ -369,13 +383,14 @@
         }
 
         async function callGAS(action, data = {}) {
-            try { 
-                const res = await fetch(GAS_API_URL, { 
-                    method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
-                    body: JSON.stringify({ action, data }), cache: 'no-cache', redirect: 'follow', credentials: 'omit'
-                }); 
-                return await res.json();
-            } catch (err) { console.error('GAS Error:', err); return { status: 'error', message: err.toString() }; }
+            try {
+                const firebase = await waitForFirebase();
+                return await firebase.execute(action, data);
+            } catch (err) {
+                console.error('Firebase write error:', action, err);
+                showToast('Gagal menyimpan ke Firebase: ' + (err.code || err.message || err), 'error');
+                return { status: 'error', message: err.message || String(err) };
+            }
         }
 
         async function logout() {
@@ -912,9 +927,6 @@
             const hand = $('r-handover'); hand.innerHTML = '<option value="">Pilih Rekan</option>';
             users.forEach(u => { if(getValueCaseInsensitive(u, 'name') !== currentUser.name) hand.innerHTML += `<option value="${getValueCaseInsensitive(u, 'name')}">${getValueCaseInsensitive(u, 'name')}</option>`; });
             
-            $('r-division').value = getValueCaseInsensitive(currentUser.data, 'division') || '-'; 
-            $('r-position').value = getValueCaseInsensitive(currentUser.data, 'position') || '-';
-
             const submitBtn = $('r-submit-btn');
 
             if (id) {
@@ -940,6 +952,16 @@
                 $('r-duration-view').innerText = "0 Hari"; $('r-quota-warning').classList.add('hidden');
                 submitBtn.innerText = "Kirim Pengajuan"; submitBtn.disabled = false; submitBtn.classList.remove('opacity-50');
             }
+            // Populate readonly employee information AFTER form.reset().
+            // reset() clears input values, including fields populated before it.
+            const employee = users.find(u =>
+                String(getValueCaseInsensitive(u, 'id')) === String(getValueCaseInsensitive(currentUser?.data, 'id'))
+            ) || users.find(u =>
+                getValueCaseInsensitive(u, 'name').toLowerCase() === String(currentUser?.name || '').toLowerCase()
+            ) || currentUser?.data || {};
+            if (currentUser?.role === ROLES.STAFF) currentUser.data = employee;
+            $('r-division').value = getValueCaseInsensitive(employee, 'division') || '-';
+            $('r-position').value = getValueCaseInsensitive(employee, 'position') || '-';
             $('modal-request').classList.remove('hidden'); $('modal-request').classList.add('flex');
         }
 
@@ -1097,7 +1119,114 @@
             }, 2000);
         }
         
-        window.onload = async () => { $('current-date').innerText = formatDate(new Date()); setTimeout(async () => { await fetchFromSheet(); $('global-loader').classList.add('loader-hidden'); }, 500); };
+        window.onload = async () => {
+            $('current-date').innerText = formatDate(new Date());
+            const connected = await fetchFromSheet();
+            if (connected) {
+                $('global-loader').classList.add('loader-hidden');
+                (await waitForFirebase()).subscribe((collectionName, records) => {
+                    if (collectionName === 'users') users = records;
+                    if (collectionName === 'heads') heads = records;
+                    if (collectionName === 'requests') leaveRequests = records;
+                    if (collectionName === 'profile') hrdProfile = { ...hrdProfile, ...records };
+                    if (currentUser && currentUser.data && (collectionName === 'users' || collectionName === 'heads')) {
+                        const target = currentUser.role === ROLES.HEAD ? heads : users;
+                        const matched = target.find(u => String(getValueCaseInsensitive(u, 'id')) === String(getValueCaseInsensitive(currentUser.data, 'id')));
+                        if (matched) currentUser.data = matched;
+                    }
+                    // Avoid overwriting forms being edited; refresh read-only dashboard/list views.
+                    if (!currentUser || document.querySelector('.modal-overlay:not(.hidden)')) return;
+                    const activeTab = document.querySelector('.nav-item.text-white')?.id?.replace('nav-', '') || 'dashboard';
+                    if (['dashboard', 'history', 'approval', 'employees', 'heads', 'hrd_profile'].includes(activeTab)) switchTab(activeTab);
+                });
+            }
+        };
+    </script>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
+        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+        import { getFirestore, collection, doc, getDocs, getDoc, setDoc, deleteDoc, onSnapshot, runTransaction } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: 'AIzaSyD1lOduspyEcs3QxGQhplkOtVA0WQID_TM',
+            authDomain: 'cuti-apps-twa.firebaseapp.com',
+            projectId: 'cuti-apps-twa',
+            storageBucket: 'cuti-apps-twa.firebasestorage.app',
+            messagingSenderId: '460990981144',
+            appId: '1:460990981144:web:420483706b4e03594ecf6d',
+            measurementId: 'G-GQWW2H7YVT'
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const root = 'leave_system';
+        const collections = { users: 'users', heads: 'heads', requests: 'requests' };
+        // This adapter preserves the original record format and action names.
+        const records = async (name) => (await getDocs(collection(db, root, 'data', collections[name]))).docs.map(d => ({ ...d.data(), ID: d.data().ID || d.id, id: d.data().id || d.id }));
+        const getProfile = async () => {
+            const snap = await getDoc(doc(db, root, 'data', 'settings', 'hrd'));
+            return snap.exists() ? snap.data() : null;
+        };
+        const clean = (obj) => JSON.parse(JSON.stringify(obj));
+        const save = async (name, input) => {
+            const data = clean(input);
+            const id = String(data.ID || data.id || '').trim();
+            if (!id || id.includes('/')) throw new Error('ID data tidak valid');
+            data.ID = id; data.id = id;
+            await setDoc(doc(db, root, 'data', collections[name], id), data, { merge: true });
+            return { status: 'success' };
+        };
+        const remove = async (name, input) => {
+            const id = String(input.id || input.ID || '').trim();
+            if (!id || id.includes('/')) throw new Error('ID data tidak valid');
+            await deleteDoc(doc(db, root, 'data', collections[name], id));
+            return { status: 'success' };
+        };
+        const adapter = {
+            async fetchAll() {
+                const [users, heads, requests, profile] = await Promise.all([
+                    records('users'), records('heads'), records('requests'), getProfile()
+                ]);
+                return { users, heads, requests, profile };
+            },
+            async execute(action, data) {
+                switch (action) {
+                    case 'saveUser': return save('users', data);
+                    case 'saveHead': return save('heads', data);
+                    case 'saveRequest': return save('requests', data);
+                    case 'deleteUser': return remove('users', data);
+                    case 'deleteHead': return remove('heads', data);
+                    case 'deleteRequest': return remove('requests', data);
+                    case 'saveProfile':
+                        await setDoc(doc(db, root, 'data', 'settings', 'hrd'), clean(data), { merge: true });
+                        return { status: 'success' };
+                    default: throw new Error('Aksi database tidak dikenal: ' + action);
+                }
+            },
+            subscribe(callback) {
+                const unsubscribers = Object.keys(collections).map(name => onSnapshot(
+                    collection(db, root, 'data', collections[name]),
+                    snapshot => callback(name, snapshot.docs.map(d => ({ ...d.data(), ID: d.data().ID || d.id, id: d.data().id || d.id }))),
+                    error => console.error('Firestore realtime error:', name, error)
+                ));
+                unsubscribers.push(onSnapshot(doc(db, root, 'data', 'settings', 'hrd'),
+                    snapshot => callback('profile', snapshot.exists() ? snapshot.data() : {}),
+                    error => console.error('Firestore profile realtime error:', error)
+                ));
+                return () => unsubscribers.forEach(stop => stop());
+            }
+        };
+        // Resolve the promise declared by the classic script only after Firebase
+        // authentication succeeds. This prevents the "undefined.fetchAll" race.
+        signInAnonymously(auth).then(() => {
+            window.twaFirebase = adapter;
+            window.twaFirebaseResolve(adapter);
+        }).catch(err => {
+            console.error('Firebase authentication:', err);
+            document.getElementById('sync-status-text').innerText = 'Authentication gagal: ' + (err.code || err.message);
+            window.twaFirebaseReject(err);
+        });
     </script>
 </body>
 </html>
