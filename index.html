@@ -221,6 +221,21 @@
         </div>
     </div>
 
+
+    <!-- Manual WhatsApp sharing: recipient/broadcast selection belongs to the user -->
+    <div id="wa-share-modal" class="fixed inset-0 z-[280] modal-overlay hidden items-center justify-center p-4">
+      <div class="bg-white rounded-[2rem] shadow-2xl max-w-md w-full p-6 md:p-8 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-start justify-between gap-3"><div><h3 class="font-black text-blue-900 text-lg">Bagikan Keputusan Cuti</h3><p class="text-xs text-slate-500 mt-1">Keputusan sudah tersimpan di Firebase. Pengiriman WhatsApp tetap manual.</p></div><button type="button" onclick="closeWaShareModal()" aria-label="Tutup" class="p-2 rounded-xl bg-slate-100"><i class="fas fa-times"></i></button></div>
+        <div class="rounded-xl bg-blue-50 border border-blue-100 p-3 text-xs text-blue-900">Penerima yang disarankan: <strong id="wa-share-recipients"></strong>. Pada WhatsApp pilih kedua kontak atau daftar broadcast yang sudah dibuat. Broadcast tidak bisa dipilih otomatis oleh website.</div>
+        <textarea id="wa-share-text" readonly rows="8" class="w-full rounded-xl border border-slate-200 p-3 text-xs font-medium bg-slate-50 whitespace-pre-wrap"></textarea>
+        <button type="button" onclick="shareWhatsAppManually()" class="w-full py-3.5 rounded-xl bg-green-600 text-white font-black text-xs"><i class="fab fa-whatsapp mr-2"></i> BAGIKAN VIA WHATSAPP</button>
+        <button type="button" onclick="copyWhatsAppText()" class="w-full py-3 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs"><i class="fas fa-copy mr-2"></i> SALIN PESAN</button>
+        <div id="wa-share-direct-links" class="flex flex-col gap-2"></div>
+        <p class="text-[10px] text-slate-500">Jika menu berbagi tidak menampilkan WhatsApp atau daftar broadcast, gunakan Salin Pesan, buka WhatsApp, lalu pilih daftar broadcast/kontak dan tempel pesannya. Tidak ada pesan yang dikirim otomatis.</p>
+        <button type="button" onclick="closeWaShareModal()" class="w-full py-2 text-xs font-semibold text-slate-500">Selesai</button>
+      </div>
+    </div>
+
     <div id="toast" class="fixed bottom-8 right-8 z-[250] hidden animate-fade-in"><div class="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/10"><div id="toast-icon" class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm"><i class="fas fa-check"></i></div><p id="toast-msg" class="text-sm font-bold">Berhasil</p></div></div>
 
     <script>
@@ -683,21 +698,75 @@
             if (tab === 'dashboard') loadDashboard(); else if (tab === 'history') loadHistory(); else if (tab === 'approval') loadApprovalList(); else if (tab === 'employees') loadEmployeeManagerUI(); else if (tab === 'heads') loadHeadManagerUI(); else if (tab === 'hrd_profile') loadHRDProfile();
         }
 
+        // Navigasi cepat dari kartu ringkasan tanpa membuka menu samping.
+        let historyStatusFilter = 'ALL';
+        function openDashboardStatus(status, destination = 'history') {
+            if (destination === 'approval' && [ROLES.HEAD, ROLES.HRD].includes(currentUser.role)) {
+                switchTab('approval');
+                return;
+            }
+            historyStatusFilter = status || 'ALL';
+            switchTab('history');
+        }
+
+        function dashboardStatusCard(title, count, color, status, destination = 'history', subtitle = 'Lihat detail') {
+            return `<button type="button" onclick="openDashboardStatus('${status}', '${destination}')" aria-label="Lihat ${title}"
+                class="glass-card p-5 md:p-6 rounded-3xl text-left w-full hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all focus:outline-none focus:ring-4 focus:ring-blue-100 cursor-pointer group">
+                <span class="text-[10px] font-black uppercase text-slate-400 tracking-wide">${title}</span>
+                <span class="flex items-center justify-between mt-3 gap-2"><strong class="text-3xl font-black ${color}">${count}</strong><i class="fas fa-arrow-right text-slate-300 group-hover:text-blue-600"></i></span>
+                <span class="block text-[10px] text-slate-400 mt-2">${subtitle}</span>
+            </button>`;
+        }
+
         function loadDashboard() {
+            if (!currentUser) return;
+            const getStatus = r => String(getValueCaseInsensitive(r, 'status') || '').toUpperCase();
             if (currentUser.role === ROLES.STAFF) {
-                const my = leaveRequests.filter(r => getValueCaseInsensitive(r, 'name') === currentUser.name); 
-                $('main-content').innerHTML = `<div class="space-y-8 animate-fade-in"><div class="flex justify-between items-center"><h3 class="font-bold text-slate-800">Ringkasan</h3><button onclick="openRequestModal()" class="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase shadow-lg">Pengajuan Baru</button></div><div class="grid grid-cols-2 md:grid-cols-4 gap-6"><div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Annual Quota</p><h3 class="text-3xl font-black text-blue-900">${parseInt(getValueCaseInsensitive(currentUser.data, 'AnnualQuota')) || 0}</h3></div><div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Special Quota</p><h3 class="text-3xl font-black text-blue-900">${parseInt(getValueCaseInsensitive(currentUser.data, 'SpecialQuota')) || 0}</h3></div><div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Approved</p><h3 class="text-3xl font-black text-emerald-600">${my.filter(r => getValueCaseInsensitive(r, 'status') === 'APPROVED').length}</h3></div><div class="glass-card p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Pending</p><h3 class="text-3xl font-black text-amber-500">${my.filter(r => !['APPROVED','REJECTED','CANCELLED'].includes(getValueCaseInsensitive(r, 'status'))).length}</h3></div></div></div>`;
+                const my = leaveRequests.filter(r => getValueCaseInsensitive(r, 'name') === currentUser.name);
+                const approved = my.filter(r => getStatus(r) === 'APPROVED').length;
+                const pending = my.filter(r => !['APPROVED','REJECTED','CANCELLED'].includes(getStatus(r))).length;
+                const rejected = my.filter(r => getStatus(r) === 'REJECTED').length;
+                $('main-content').innerHTML = `<div class="space-y-7 animate-fade-in">
+                    <div class="flex flex-wrap justify-between items-center gap-3"><h3 class="font-bold text-slate-800">Ringkasan</h3><button onclick="openRequestModal()" class="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase shadow-lg">Pengajuan Baru</button></div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                        <div class="glass-card p-5 md:p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Annual Quota</p><h3 class="text-3xl font-black text-blue-900">${parseInt(getValueCaseInsensitive(currentUser.data, 'AnnualQuota')) || 0}</h3></div>
+                        <div class="glass-card p-5 md:p-6 rounded-3xl"><p class="text-[10px] font-black uppercase text-slate-400 mb-2">Special Quota</p><h3 class="text-3xl font-black text-blue-900">${parseInt(getValueCaseInsensitive(currentUser.data, 'SpecialQuota')) || 0}</h3></div>
+                        ${dashboardStatusCard('Approved', approved, 'text-emerald-600', 'APPROVED')}
+                        ${dashboardStatusCard('Pending', pending, 'text-amber-500', 'PENDING')}
+                        ${dashboardStatusCard('Rejected', rejected, 'text-red-500', 'REJECTED')}
+                        ${dashboardStatusCard('Semua Pengajuan', my.length, 'text-blue-700', 'ALL')}
+                    </div></div>`;
             } else {
-                const pending = leaveRequests.filter(r => {
-                    const status = getValueCaseInsensitive(r, 'status'), targetHeadId = getValueCaseInsensitive(r, 'TargetHeadId'), myId = getValueCaseInsensitive(currentUser.data, 'id');
-                    return (currentUser.role === ROLES.HEAD && status === 'HEAD_DEPT_REVIEW' && targetHeadId.toString() === myId.toString()) || (currentUser.role === ROLES.HRD && status === 'HRD_APPROVAL');
-                });
-                $('main-content').innerHTML = `<div class="glass-card p-8 rounded-[2rem] bg-amber-50 border-amber-100"><h3 class="text-4xl font-black text-amber-700">${pending.length} Menunggu</h3><p class="text-xs uppercase font-bold text-amber-500 mt-1">Antrean Persetujuan Baru</p></div>`;
+                const myHeadId = String(getValueCaseInsensitive(currentUser.data, 'id') || '');
+                const related = currentUser.role === ROLES.HEAD
+                    ? leaveRequests.filter(r => String(getValueCaseInsensitive(r, 'TargetHeadId') || '') === myHeadId)
+                    : leaveRequests;
+                const actionRequired = related.filter(r => currentUser.role === ROLES.HEAD
+                    ? getStatus(r) === 'HEAD_DEPT_REVIEW' : getStatus(r) === 'HRD_APPROVAL');
+                $('main-content').innerHTML = `<div class="space-y-6 animate-fade-in">
+                    <div class="flex items-center justify-between gap-3"><h3 class="font-bold text-slate-800">Ringkasan ${currentUser.role === ROLES.HRD ? 'HRD' : 'Head Department'}</h3><span class="text-xs text-slate-400">Klik kartu untuk melihat detail</span></div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                        ${dashboardStatusCard('Perlu Persetujuan', actionRequired.length, 'text-amber-600', 'PENDING', 'approval', 'Buka halaman persetujuan')}
+                        ${dashboardStatusCard('Approved', related.filter(r => getStatus(r) === 'APPROVED').length, 'text-emerald-600', 'APPROVED')}
+                        ${dashboardStatusCard('Rejected', related.filter(r => getStatus(r) === 'REJECTED').length, 'text-red-600', 'REJECTED')}
+                        ${dashboardStatusCard('Semua Pengajuan', related.length, 'text-blue-700', 'ALL')}
+                    </div></div>`;
             }
         }
 
+        function setHistoryStatusFilter(status) {
+            historyStatusFilter = status;
+            loadHistory();
+        }
         function loadHistory() {
-            let data = [...leaveRequests]; if (currentUser.role === ROLES.STAFF) data = data.filter(r => getValueCaseInsensitive(r, 'name') === currentUser.name);
+            let data = [...leaveRequests];
+            if (currentUser.role === ROLES.STAFF) data = data.filter(r => getValueCaseInsensitive(r, 'name') === currentUser.name);
+            if (currentUser.role === ROLES.HEAD) {
+                const headId = String(getValueCaseInsensitive(currentUser.data, 'id') || '');
+                data = data.filter(r => String(getValueCaseInsensitive(r, 'TargetHeadId') || '') === headId);
+            }
+            if (historyStatusFilter === 'PENDING') data = data.filter(r => !['APPROVED','REJECTED','CANCELLED'].includes(String(getValueCaseInsensitive(r,'status')).toUpperCase()));
+            else if (historyStatusFilter !== 'ALL') data = data.filter(r => String(getValueCaseInsensitive(r,'status')).toUpperCase() === historyStatusFilter);
             const grouped = data.reduce((acc, r) => {
                 const submitRaw = getValueCaseInsensitive(r, 'SubmitDate') || getValueCaseInsensitive(r, 'Date Submission') || getValueCaseInsensitive(r, 'Tanggal Pengajuan') || getValueCaseInsensitive(r, 'start');
                 const d = new Date(submitRaw); if (isNaN(d.getTime())) return acc;
@@ -706,7 +775,9 @@
                 if (!acc[dateKey]) acc[dateKey] = []; acc[dateKey].push(r); return acc;
             }, {});
             const sortedKeys = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
-            let historyHTML = `<div class="animate-fade-in space-y-8"><h3 class="font-black uppercase text-slate-800 tracking-tight">Riwayat</h3>`;
+            const labels = { ALL: 'Semua', PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected', CANCELLED: 'Cancelled' };
+            const filterButtons = Object.entries(labels).map(([key, label]) => `<button type="button" onclick="setHistoryStatusFilter('${key}')" class="whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${historyStatusFilter === key ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-200'}">${label}</button>`).join('');
+            let historyHTML = `<div class="animate-fade-in space-y-6"><div class="flex items-center justify-between gap-3"><h3 class="font-black uppercase text-slate-800 tracking-tight">Riwayat Cuti</h3><button type="button" onclick="switchTab('dashboard')" class="text-xs font-bold text-blue-600"><i class="fas fa-arrow-left mr-1"></i> Dashboard</button></div><div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar">${filterButtons}</div><p class="text-xs text-slate-500">Menampilkan ${data.length} pengajuan • ${labels[historyStatusFilter] || historyStatusFilter}</p>`;
             if (sortedKeys.length === 0) historyHTML += `<p class="text-slate-400 italic py-20 text-center glass-card rounded-[2rem]">Belum ada riwayat.</p>`;
             else {
                 sortedKeys.forEach(key => {
@@ -855,27 +926,24 @@
                     }
                 }
 
-                let waMessage = "";
-                if (isHeadDecision) {
-                    if (isApproveAction) {
-                        waMessage = `*UPDATE STATUS CUTI*\n\nYth. ${userName},\n\nPengajuan cuti Anda tanggal ${formatDate(submitDateRaw)} telah *DISETUJUI* oleh ${headPos}.\n\n*Detail Pengajuan:*\n- Tipe: ${leaveType}\n- Periode: ${formatDate(leaveStart)} s/d ${formatDate(leaveEnd)}\n- Durasi: ${leaveDur} Hari\n- Alasan: ${leaveReason}\n\nSilakan cek detail di aplikasi.\n\nTerima kasih.`;
-                    } else {
-                        waMessage = `*UPDATE STATUS CUTI*\n\nYth. ${userName},\n\nPengajuan cuti Anda tanggal ${formatDate(submitDateRaw)} *TIDAK DISETUJUI* oleh ${headPos}.\n\n*Detail Pengajuan:*\n- Tipe: ${leaveType}\n- Periode: ${formatDate(leaveStart)} s/d ${formatDate(leaveEnd)}\n- Durasi: ${leaveDur} Hari\n- Alasan: ${leaveReason}\n\nSilakan cek detail di aplikasi atau langsung menghubungi ${headPos}.\n\nTerima kasih.`;
-                    }
-                    if (userPhone) triggerWhatsApp(userPhone, waMessage);
-                    if (isApproveAction && hrdProfile.phone) {
-                        const hrdMsg = `*NOTIFIKASI PENGAJUAN CUTI*\n\nYth. HRD Transwisata,\n\nBerikut ini pengajuan cuti dari anggota kami atas nama *${userName}* (${userPos}) telah saya *SETUJUI*\n\n*Detail Pengajuan:*\n- Tipe: ${leaveType}\n- Periode: ${formatDate(leaveStart)} s/d ${formatDate(leaveEnd)}\n- Durasi: ${leaveDur} Hari\n- Alasan: ${leaveReason}\n\nMohon diproses lebih lanjut.\n\nSilakan login melalui portal *ECrew Transwisata* untuk akses *ECrew Leaves System* dan memproses pengajuan ini.\n\nTerima kasih.`;
-                        setTimeout(() => triggerWhatsApp(hrdProfile.phone, hrdMsg), 2500);
-                    }
-                } else if (currentUser.role === ROLES.HRD) {
-                    if (isApproveAction) {
-                        waMessage = `*UPDATE STATUS CUTI*\n\nYth. ${userName},\n\nPengajuan cuti Anda tanggal ${formatDate(submitDateRaw)} telah *DISETUJUI* oleh HRD.\n\nSilakan cek detail di aplikasi.\n\nTerima kasih.`;
-                    } else {
-                        waMessage = `*UPDATE STATUS CUTI*\n\nYth. ${userName},\n\nPengajuan cuti Anda tanggal ${formatDate(submitDateRaw)} *TIDAK DISETUJUI* oleh HRD.\n\nSilakan cek detail di aplikasi.\n\nTerima kasih.`;
-                    }
-                    if (userPhone) triggerWhatsApp(userPhone, waMessage);
-                }
-                setTimeout(async () => { await fetchFromSheet(); switchTab('approval'); showToast('Berhasil!'); }, 800);
+                // Keputusan tersimpan dahulu; pengguna memilih sendiri penerima/broadcast di WhatsApp.
+                const employee = users.find(u => String(getValueCaseInsensitive(u, 'name')).trim().toLowerCase() === String(userName).trim().toLowerCase());
+                const headForRequest = heads.find(h => String(getValueCaseInsensitive(h, 'id')) === String(getValueCaseInsensitive(r, 'TargetHeadId')));
+                const recipientItems = isHeadDecision
+                    ? [
+                        { label: 'HRD', phone: getValueCaseInsensitive(hrdProfile, 'phone') },
+                        { label: 'Karyawan', phone: userPhone || getValueCaseInsensitive(employee, 'phone') }
+                      ]
+                    : [
+                        { label: 'Karyawan', phone: userPhone || getValueCaseInsensitive(employee, 'phone') },
+                        { label: 'Head Department', phone: getValueCaseInsensitive(headForRequest, 'phone') }
+                      ];
+                const decisionText = isApproveAction ? 'DISETUJUI' : 'DITOLAK';
+                const stepText = isHeadDecision ? (isApproveAction ? 'Menunggu proses HRD' : 'Ditolak oleh Head Department') : (isApproveAction ? 'Persetujuan akhir HRD' : 'Ditolak oleh HRD');
+                const waMsg = `*PEMBERITAHUAN STATUS CUTI*\n\nYth. HRD dan pihak terkait,\n\nPengajuan cuti *${userName}* (${userPos || '-'}) telah *${decisionText}* oleh ${isHeadDecision ? headPos : 'HRD'}.\n\n*Detail Pengajuan:*\n- Tipe: ${leaveType}\n- Periode: ${formatDate(r.Start)} s/d ${formatDate(r.End)}\n- Durasi: ${leaveDur} Hari\n- Status: ${stepText}\n- Catatan: ${note || '-'}\n\nSilakan lihat detail melalui aplikasi *ECrew Leaves System*.\n\nTerima kasih.`;
+                showToast('Keputusan berhasil disimpan! Silakan bagikan pesan WhatsApp.');
+                openWaShareModal(waMsg, recipientItems);
+                setTimeout(async () => { await fetchFromSheet(); switchTab('approval'); }, 800);
             }
         }
 
@@ -1016,7 +1084,7 @@
             if (res.status === 'success') {
                 if (headObj && getValueCaseInsensitive(headObj, 'Phone')) {
                     const statusText = editingRequestId ? "PERUBAHAN" : "BARU";
-                    const waMsg = `*PENGAJUAN CUTI ${statusText}*\n\nYth. ${getValueCaseInsensitive(headObj, 'Name')},\n\nMohon ijin dengan ini saya mengajukan cuti dengan detail nama *${currentUser.name}* (${posVal}).\n\n*Detail Pengajuan:*\n- Tipe: ${p.Type}\n- Periode: ${formatDate(p.Start)} s/d ${formatDate(p.End)}\n- Durasi: ${p.Duration} Hari\n- Alasan: ${p.Reason}\n\nMohon untuk dapat memproses melalui aplikasi *ECrew Leaves System*.\n\nTerima kasih.`;
+                    const waMsg = `*PENGAJUAN CUTI ${statusText}*\n\nYth. ${getValueCaseInsensitive(headObj, 'Position') || 'Head Department'},\n\nMohon ijin dengan ini saya mengajukan cuti dengan detail nama *${currentUser.name}* (${posVal}).\n\n*Detail Pengajuan:*\n- Tipe: ${p.Type}\n- Periode: ${formatDate(p.Start)} s/d ${formatDate(p.End)}\n- Durasi: ${p.Duration} Hari\n- Alasan: ${p.Reason}\n\nMohon untuk dapat memproses melalui aplikasi *ECrew Leaves System*.\n\nTerima kasih.`;
                     triggerWhatsApp(getValueCaseInsensitive(headObj, 'Phone'), waMsg);
                 }
                 closeRequestModal(); setTimeout(async () => { await fetchFromSheet(); switchTab('dashboard'); }, 1500);
@@ -1100,25 +1168,60 @@
         }
         function closeUserCard() { $('modal-user-card').classList.add('hidden'); $('modal-user-card').classList.remove('flex'); }
 
-        function triggerWhatsApp(p, m) { 
-            if (!p) return; 
-            let c = String(p).replace(/[^0-9]/g, ''); 
-            if (c.startsWith('0')) c = '62' + c.substring(1); 
-            else if (c.startsWith('8')) c = '62' + c; 
-            
-            const urlPesan = encodeURIComponent(m);
-            const waAppUrl = `whatsapp://send?phone=${c}&text=${urlPesan}`;
-            const waWebUrl = `https://wa.me/${c}?text=${urlPesan}`;
-
-            // Coba buka aplikasi native WhatsApp terlebih dahulu
-            window.location.href = waAppUrl;
-
-            // Fallback ke WhatsApp Web jika aplikasi tidak merespon/tidak ada
-            setTimeout(() => {
-                window.open(waWebUrl, '_blank');
-            }, 2000);
+        let pendingWaShare = { text: '', recipients: [] };
+        function normalizedWaPhone(value) {
+            let num = String(value || '').replace(/[^0-9]/g, '');
+            if (num.startsWith('0')) num = '62' + num.slice(1);
+            else if (num.startsWith('8')) num = '62' + num;
+            return num;
         }
-        
+        function openWaShareModal(message, recipients) {
+            pendingWaShare = { text: String(message), recipients: recipients || [] };
+            $('wa-share-text').value = pendingWaShare.text;
+            $('wa-share-recipients').textContent = pendingWaShare.recipients.map(x => x.label).join(' dan ');
+            const target = $('wa-share-direct-links'); target.replaceChildren();
+            pendingWaShare.recipients.forEach(item => {
+                const phone = normalizedWaPhone(item.phone);
+                if (!phone) return;
+                const a = document.createElement('a');
+                a.href = `https://wa.me/${phone}?text=${encodeURIComponent(pendingWaShare.text)}`;
+                a.target = '_blank'; a.rel = 'noopener noreferrer';
+                a.className = 'block text-center rounded-xl border border-green-200 bg-green-50 p-3 text-xs font-bold text-green-800';
+                a.textContent = 'Kirim terpisah ke ' + item.label + ' (manual)';
+                target.appendChild(a);
+            });
+            $('wa-share-modal').classList.remove('hidden'); $('wa-share-modal').classList.add('flex');
+        }
+        function closeWaShareModal() { $('wa-share-modal').classList.add('hidden'); $('wa-share-modal').classList.remove('flex'); }
+        async function copyWhatsAppText() {
+            const text = pendingWaShare.text;
+            try { await navigator.clipboard.writeText(text); showToast('Pesan disalin. Tempel di WhatsApp/broadcast.'); }
+            catch (err) { const input = $('wa-share-text'); input.focus(); input.select(); showToast('Salin teks yang telah dipilih, lalu tempel di WhatsApp.'); }
+        }
+        async function shareWhatsAppManually() {
+            // Web Share API opens the mobile share chooser. WhatsApp does not expose an API
+            // for browser-side multi-recipient/broadcast preselection.
+            if (navigator.share) {
+                try { await navigator.share({ text: pendingWaShare.text }); return; }
+                catch (err) { if (err.name === 'AbortError') return; }
+            }
+            // Fallback: open WhatsApp compose without preselected recipient.
+            const url = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(pendingWaShare.text);
+            const win = window.open(url, '_blank', 'noopener,noreferrer');
+            if (!win) window.location.assign(url);
+        }
+
+        function triggerWhatsApp(p, m) {
+            if (!p) return;
+            let c = String(p).replace(/[^0-9]/g, '');
+            if (c.startsWith('0')) c = '62' + c.substring(1);
+            else if (c.startsWith('8')) c = '62' + c;
+            // WhatsApp wa.me hanya membuka draft. Pengguna tetap harus menekan Kirim.
+            const link = `https://wa.me/${c}?text=${encodeURIComponent(m)}`;
+            const opened = window.open(link, '_blank', 'noopener,noreferrer');
+            if (!opened) window.location.href = link;
+        }
+
         window.onload = async () => {
             $('current-date').innerText = formatDate(new Date());
             const connected = await fetchFromSheet();
