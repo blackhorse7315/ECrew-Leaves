@@ -29,6 +29,45 @@
         #global-loader { transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, visibility 0.4s; visibility: visible; }
         .loader-hidden { transform: translateY(150px) !important; opacity: 0 !important; visibility: hidden !important; }
         
+
+        /* Tampilan detail yang nyaman dibaca; tidak memengaruhi dokumen PDF */
+        @media screen {
+            #modal-detail .print-doc-container { display: none !important; }
+            #modal-detail #print-area { overflow-x: hidden; }
+            #modal-detail .leave-preview { font-family: 'Inter', sans-serif; color: #1e293b; }
+            .leave-preview .lp-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 18px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(15,23,42,.03); }
+            .leave-preview .lp-section-title { font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #1e40af; margin-bottom: 13px; }
+            .leave-preview .lp-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px 18px; }
+            .leave-preview .lp-field { min-width: 0; }
+            .leave-preview .lp-field.wide { grid-column:1/-1; }
+            .leave-preview .lp-label { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; font-weight: 800; color: #94a3b8; margin-bottom: 5px; }
+            .leave-preview .lp-value { font-size: 13px; font-weight: 600; line-height: 1.65; color:#334155; overflow-wrap:anywhere; word-break:normal; white-space:pre-wrap; }
+            .leave-preview .lp-status { display:inline-flex; align-items:center; border-radius:999px; padding:7px 12px; font-size:11px; font-weight:800; }
+            .leave-preview .lp-status.approved { background:#dcfce7; color:#166534; }
+            .leave-preview .lp-status.rejected { background:#fee2e2; color:#991b1b; }
+            .leave-preview .lp-status.pending { background:#fef3c7; color:#92400e; }
+            .leave-preview .lp-note { background:#f8fafc; border-radius:12px; padding:13px; margin-bottom:10px; }
+            .leave-preview .lp-note:last-child { margin-bottom:0; }
+            .leave-preview .lp-note .lp-value { font-weight:500; text-align:left; }
+            #modal-detail #print-id-label { overflow-wrap:anywhere; font-size: 11px; }
+        }
+        @media screen and (max-width: 640px) {
+            #modal-detail { padding: 10px !important; }
+            #modal-detail > div { border-radius: 24px !important; max-height: calc(100dvh - 20px); }
+            #modal-detail #print-area { padding: 18px !important; }
+            #modal-detail #print-area > div:first-child { padding-bottom: 14px; margin-bottom: 18px; }
+            #modal-detail #print-area h2 { font-size: 18px !important; line-height:1.35; }
+            #modal-detail #print-area > div:first-child p { letter-spacing:.08em; }
+            #modal-detail .leave-preview .lp-card { padding: 15px; border-radius:16px; }
+            #modal-detail .leave-preview .lp-grid { gap: 14px 12px; }
+            #modal-detail .leave-preview .lp-value { font-size: 12px; }
+            #modal-detail > div > div:last-child { padding: 14px !important; gap: 10px !important; }
+            #modal-detail > div > div:last-child button { padding: 14px 8px !important; font-size: 11px !important; }
+        }
+        @media print {
+            #modal-detail .leave-preview { display: none !important; }
+        }
+
         /* PRINT STYLES - TOTAL CLEANUP */
         @media print {
             @page { size: A4; margin: 10mm; }
@@ -1107,7 +1146,41 @@
             // Perbaikan krusial penangkapan Date Submission
             const submitDateRaw = getValueCaseInsensitive(r, 'SubmitDate') || getValueCaseInsensitive(r, 'Date Submission') || getValueCaseInsensitive(r, 'Tanggal Pengajuan') || r['Date Submission'] || r['Submission Date'] || r.SubmitDate;
 
+            // Escape teks dari data karyawan untuk tampilan preview.
+            const safePreview = (v) => String(v ?? '-').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+            const previewField = (label, value, wide = false) => `<div class="lp-field ${wide ? 'wide' : ''}"><div class="lp-label">${label}</div><div class="lp-value">${safePreview(value || '-')}</div></div>`;
+            const previewStatusClass = st === 'APPROVED' ? 'approved' : st === 'REJECTED' ? 'rejected' : 'pending';
+            const readableStatus = ({APPROVED:'APPROVED', REJECTED:'REJECTED', HEAD_DEPT_REVIEW:'MENUNGGU HEAD DEPARTMENT', HRD_REVIEW:'MENUNGGU HRD', CANCELLED:'DIBATALKAN'})[st] || st || 'PENDING';
+
             $('modal-body').innerHTML = `
+                <div class="leave-preview">
+                    <div class="lp-card">
+                        <div class="lp-section-title">Informasi Karyawan</div>
+                        <div class="lp-grid">
+                            ${previewField('Nama lengkap', getValueCaseInsensitive(r, 'name'), true)}
+                            ${previewField('Divisi', getValueCaseInsensitive(r, 'division'))}
+                            ${previewField('Jabatan', getValueCaseInsensitive(r, 'position'))}
+                        </div>
+                    </div>
+                    <div class="lp-card">
+                        <div class="lp-section-title">Detail Pengajuan Cuti</div>
+                        <div class="lp-grid">
+                            ${previewField('Jenis cuti', getValueCaseInsensitive(r, 'type'))}
+                            ${previewField('Tanggal pengajuan', formatDate(submitDateRaw))}
+                            ${previewField('Mulai', formatDate(getValueCaseInsensitive(r, 'start')))}
+                            ${previewField('Selesai', formatDate(getValueCaseInsensitive(r, 'end')))}
+                            ${previewField('Durasi', (getValueCaseInsensitive(r, 'duration') || 0) + ' Hari')}
+                            ${previewField('Delegasi tugas', getValueCaseInsensitive(r, 'handover'))}
+                            ${previewField('Alasan', getValueCaseInsensitive(r, 'reason'), true)}
+                            <div class="lp-field wide"><div class="lp-label">Status Pengajuan</div><span class="lp-status ${previewStatusClass}">${safePreview(readableStatus)}</span></div>
+                        </div>
+                    </div>
+                    <div class="lp-card">
+                        <div class="lp-section-title">Keputusan & Catatan</div>
+                        <div class="lp-note"><div class="lp-label">Head Department</div><div class="lp-value">${safePreview(headNote || '-')}</div></div>
+                        <div class="lp-note"><div class="lp-label">HRD</div><div class="lp-value">${safePreview(hrdNote || '-')}</div></div>
+                    </div>
+                </div>
                 <div class="print-doc-container">
                     <table class="print-table mb-4">
                         <tr><td class="print-bg-header" style="width: 25%"><span class="print-label">Full Name</span></td><td style="width: 25%">${getValueCaseInsensitive(r, 'name')}</td><td class="print-bg-header" style="width: 25%"><span class="print-label">Reference ID</span></td><td style="width: 25%">#${getValueCaseInsensitive(r, 'id')}</td></tr>
